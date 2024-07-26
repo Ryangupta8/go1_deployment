@@ -25,7 +25,7 @@ class Go1Env():
     def __init__(self):
         self.q_stand = np.array([-0.1, 0.8, -1.5, 0.1, 0.8, -1.5, -0.1, 1.0, -1.5, 0.1, 1.0, -1.5])
         self.vel_cmd = np.zeros(3)
-        self.q_cmd = np.zeros(12)
+        self.a_cmd = np.zeros(12)
 
         self.q = np.zeros(12)
         self.dq = np.zeros(12)
@@ -35,14 +35,16 @@ class Go1Env():
         # joint velocities qdot [12] (self.dq)
         # projected gravity (quat_rot_inv(robot_base_quat, [0,0,-9.81]) ) [3] (self.projected_gravity)
         # velocity command (xdot, ydot, yaw rate) [3] (self.vel_cmd)
-        # last policy output [12] (self.q_cmd)
+        # last policy output [12] (self.a_cmd)
         self.obs = np.zeros(42)
 
         self.interface = RobotInterface()
 
         # PD Gains for robot
-        self.kp = np.array([130 , 110 , 140 , 130 , 110 , 140 , 130, 110, 140 , 130 , 110, 140])*0.725# 0.6 # 0.8
-        self.kd = np.array([0.5, 0.3, 0.2, 0.5, 0.3, 0.2, 0.5, 0.3, 0.2, 0.5, 0.3, 0.2])*5 # 5 # 7
+        # Kp=20, Kd=0.5, Ka=0.25
+        self.kp = 20
+        self.kd = 0.5
+        self.ka = 0.25
         # Robot Startup object
         self.robot_init = RealRobotInit(self.interface, self.kp, self.kd)
         self.robot_init.get_init_config()
@@ -62,13 +64,17 @@ class Go1Env():
 
         print("Robot Init completed")
     
-    def quat_rot_inv(self, body_quat):
-        pass
-        ## todo
+    def quat_rot_inv(self, body_quat, gravity):
+        q_w = q[0]
+        q_vec = q[1:]
+        a = gravity * (2.0 * q_w**2 - 1.0)
+        b = np.cross(q_vec, gravity, dim=-1) * q_w * 2.0
+        c = q_vec * q_vec * gravity
+        return a - b + c
 
-    def step(self, vel_cmd, q_cmd):
+    def step(self, vel_cmd, a_cmd):
         self.vel_cmd = vel_cmd
-        self.q_cmd = q_cmd
+        self.a_cmd = a_cmd
 
         step_time = time.time()
         
@@ -76,7 +82,7 @@ class Go1Env():
             self.run_robot()
 
         # Update self.obs and send back to policy
-        self.obs = np.flatten(np.concatenate((self.q, self.dq, self.projected_gravity, self.vel_cmd, self.q_cmd)))
+        self.obs = np.flatten(np.concatenate((self.q, self.dq, self.projected_gravity, self.vel_cmd, self.a_cmd)))
         
         return self.obs
 
@@ -86,8 +92,8 @@ class Go1Env():
         self.q = np.array([motor.q for motor in low_state.motorState[:12]])
         # Joint vel
         self.dq = np.array([motor.dq for motor in low_state.motorState[:12]])
-        # Body quat
-        quat = np.array([low_state.imu.quaternion])
+        # Body quaternion, normalized, (w,x,y,z)
+        quat = np.array([low_state.imu.quaternion]) 
         self.projected_gravity = quat_rot_inv(quat, [0,0,-9.81])
     
     def run_robot(self):
@@ -98,11 +104,21 @@ class Go1Env():
 
         self.get_obs()
 
-        ## todo we want to do this two ways
+        msgHW = np.zeros(60, dtype=np.float32)
+        for motor_id in range(12):
+            msgHW[motor_id * 5] = self.q_stand[motor_id] # q_des
+            msgHW[motor_id * 5 + 1] = self.kp # kp
+            msgHW[motor_id * 5 + 2] = 0 # dq_des
+            msgHW[motor_id * 5 + 3] = self.kd # kd
+            msgHW[motor_id * 5 + 4] = self.kp*(self.q_stand[motor_id] - self.q[motor_id]) + \
+                                      self.kd*(-self.dq[motor_id]) + self.kp*self.ka*self.a_cmd  # FF torque
+
+        self.interface.send_command(msgHW)
+
 
 def main():
 
-    ## Todo load the model
+    ## todo load the model
 
     env = Go1Env()
 
@@ -119,7 +135,7 @@ def main():
 
         ## Organized such that newest obs goes on top
         ## and oldest at the bottom
-        obs_history = np.delete(obs_history, H-1, 0)
+        obs_history = np.delete(obs_history, -1, 0)
         obs_history = np.append(obs, obs_history, axis=0) 
 
         
