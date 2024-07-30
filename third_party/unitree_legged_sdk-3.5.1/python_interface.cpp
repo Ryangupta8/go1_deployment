@@ -23,7 +23,6 @@ PYBIND11_MODULE(robot_interface, m) {
       .value("Aliengo", LeggedType::Aliengo)
       .value("A1", LeggedType::A1)
       .value("Go1", LeggedType::Go1)
-      .value("B1", LeggedType::B1)
       .export_values();
 
   py::enum_<RecvEnum>(m, "RecvEnum")
@@ -33,21 +32,21 @@ PYBIND11_MODULE(robot_interface, m) {
       .export_values();
 
   py::class_<UDP>(m, "UDP")
-      .def(py::init<uint8_t, uint16_t, const char *, uint16_t>())
+      .def(py::init<uint8_t, HighLevelType>())
       .def(py::init<uint16_t, const char *, uint16_t, int, int, bool, RecvEnum>())
       .def(py::init<uint16_t, int, int, bool, RecvEnum, bool>())
       .def("SetIpPort", &UDP::SetIpPort)
       .def("SetRecvTimeout", &UDP::SetRecvTimeout)
       .def("SetDisconnectTime", &UDP::SetDisconnectTime)
       .def("SetAccessibleTime", &UDP::SetAccessibleTime)
+      .def("SetSend", py::overload_cast<char *>(&UDP::SetSend))
+      .def("GetRecv", py::overload_cast<char *>(&UDP::GetRecv))
       .def("Send", &UDP::Send)
       .def("Recv", &UDP::Recv)
       .def("InitCmdData", py::overload_cast<HighCmd &>(&UDP::InitCmdData))
       .def("InitCmdData", py::overload_cast<LowCmd &>(&UDP::InitCmdData))
-      .def("SetSend", py::overload_cast<char *>(&UDP::SetSend))
       .def("SetSend", py::overload_cast<HighCmd &>(&UDP::SetSend))
       .def("SetSend", py::overload_cast<LowCmd &>(&UDP::SetSend))
-      .def("GetRecv", py::overload_cast<char *>(&UDP::GetRecv))
       .def("GetRecv", py::overload_cast<HighState &>(&UDP::GetRecv))
       .def("GetRecv", py::overload_cast<LowState &>(&UDP::GetRecv));
 
