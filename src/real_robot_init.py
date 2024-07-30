@@ -49,7 +49,7 @@ class RealRobotInit:
 
     def get_init_config(self):
 
-        for idx in range(5000):
+        for idx in range(50000):
             low_state = self.interface.receive_observation()
             self.starting_config = np.array([motor.q for motor in low_state.motorState[:12]])
             #threading.Event().wait(0.002)
@@ -82,8 +82,8 @@ class RealRobotInit:
                 self.get_robot_config()
                 for motor_id in range(12):
                     self.command[motor_id * 5] = self.jpos_cmd[motor_id]
-                    self.command[motor_id * 5 + 1] = self.kp[motor_id]
-                    self.command[motor_id * 5 + 3] = self.kd[motor_id]
+                    self.command[motor_id * 5 + 1] = self.kp
+                    self.command[motor_id * 5 + 3] = self.kd
                     k = 0
             else:
                 k += 1

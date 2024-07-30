@@ -88,12 +88,7 @@ set(PYBIND11_TEST_FILTER
 if(CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
   # We're being loaded directly, i.e. not via add_subdirectory, so make this
   # work as its own project and load the pybind11Config to get the tools we need
-
-  if(SKBUILD)
-    add_subdirectory(.. pybind11_src)
-  else()
-    find_package(pybind11 REQUIRED CONFIG)
-  endif()
+  find_package(pybind11 REQUIRED CONFIG)
 endif()
 
 if(NOT CMAKE_BUILD_TYPE AND NOT DEFINED CMAKE_CONFIGURATION_TYPES)
@@ -493,9 +488,6 @@ foreach(target ${test_targets})
                                                    "${CMAKE_CURRENT_BINARY_DIR}")
       endforeach()
     endif()
-  endif()
-  if(SKBUILD)
-    install(TARGETS ${target} LIBRARY DESTINATION .)
   endif()
 endforeach()
 

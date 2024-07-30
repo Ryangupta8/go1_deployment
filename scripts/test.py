@@ -1,11 +1,12 @@
 import os
+import time
+import sys
 import getch
 import numpy as np
-import torch
+# import torch
 
 
-sys.path.append('../third_party/unitree_legged_sdk-3.5.1')
-# sys.path.append('../third_party/unitree_legged_sdk-3.8.0')
+sys.path.append('../third_party/unitree_legged_sdk-3.5.1/build')
 sys.path.append('../src')
 sys.path.append('../models')
 
@@ -65,10 +66,14 @@ class Go1Env():
         print("Robot Init completed")
     
     def quat_rot_inv(self, body_quat, gravity):
-        q_w = q[0]
-        q_vec = q[1:]
+        # print("body_quat.shape = ",body_quat.flatten().shape)
+        q_w = body_quat.flatten()[0]
+        # print("q_w = ",q_w)
+        q_vec = body_quat.flatten()[1:]
+        # print("q_vec.shape = ", q_vec.shape)
+        # print("gravity.shape = ", gravity.shape)
         a = gravity * (2.0 * q_w**2 - 1.0)
-        b = np.cross(q_vec, gravity, dim=-1) * q_w * 2.0
+        b = np.cross(q_vec, gravity) * q_w * 2.0
         c = q_vec * q_vec * gravity
         return a - b + c
 
@@ -81,9 +86,14 @@ class Go1Env():
         while ((time.time() - step_time) < POLICY_STEP):
             self.run_robot()
 
+        # print("self.obs.shape = ", self.q.shape)
+        # print("self.obs.shape = ", self.dq.shape)
+        # print("self.obs.shape = ", self.projected_gravity.shape)
+        # print("self.obs.shape = ", self.vel_cmd.shape)
+        # print("self.obs.shape = ", self.a_cmd.shape)
         # Update self.obs and send back to policy
-        self.obs = np.flatten(np.concatenate((self.q, self.dq, self.projected_gravity, self.vel_cmd, self.a_cmd)))
-        
+        self.obs = np.concatenate((self.q, self.dq, self.projected_gravity, self.vel_cmd, self.a_cmd), axis=0).flatten()
+        # print("self.obs.shape = ", self.obs.shape)
         return self.obs
 
     def get_obs(self):
@@ -94,7 +104,7 @@ class Go1Env():
         self.dq = np.array([motor.dq for motor in low_state.motorState[:12]])
         # Body quaternion, normalized, (w,x,y,z)
         quat = np.array([low_state.imu.quaternion]) 
-        self.projected_gravity = quat_rot_inv(quat, [0,0,-9.81])
+        self.projected_gravity = self.quat_rot_inv(quat, np.array([0,0,-9.81]))
     
     def run_robot(self):
         cur_time = time.time()
@@ -110,8 +120,7 @@ class Go1Env():
             msgHW[motor_id * 5 + 1] = self.kp # kp
             msgHW[motor_id * 5 + 2] = 0 # dq_des
             msgHW[motor_id * 5 + 3] = self.kd # kd
-            msgHW[motor_id * 5 + 4] = self.kp*(self.q_stand[motor_id] - self.q[motor_id]) + \
-                                      self.kd*(-self.dq[motor_id]) + self.kp*self.ka*self.a_cmd  # FF torque
+            msgHW[motor_id * 5 + 4] = self.kp*(self.q_stand[motor_id] - self.q[motor_id]) + self.kd*(-self.dq[motor_id]) + self.kp*self.ka*self.a_cmd[motor_id]  # FF torque
 
         self.interface.send_command(msgHW)
 
@@ -125,6 +134,8 @@ def main():
     steps = 0
     obs_history = np.zeros((42, H))
 
+    vel_cmd = np.array([0,0,0]) # policy input
+    q_cmd = np.zeros(12)# policy output
     ## todo 
     #     - init obs_history from real readings
     #     - check dims on everything
@@ -132,13 +143,18 @@ def main():
     while steps < 1000:
 
         obs = env.step(vel_cmd, q_cmd)
+        obs = np.expand_dims(obs, axis=1)
+        # print("obs_history.shape = ", obs_history.shape)
+        # print("obs.shape = ", obs.shape)
 
         ## Organized such that newest obs goes on top
         ## and oldest at the bottom
-        obs_history = np.delete(obs_history, -1, 0)
-        obs_history = np.append(obs, obs_history, axis=0) 
+        obs_history = np.delete(obs_history, -1, axis=1)
+        # print("obs_history.shape = ", obs_history.shape)
+        obs_history = np.append(obs, obs_history, axis=1)
+        # print("obs_history.shape = ", obs_history.shape)
 
-        
+        ## Call policy; update vel_cmd and q_cmd
 
 
 if __name__ == "__main__":
