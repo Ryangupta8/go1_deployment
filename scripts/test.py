@@ -1,3 +1,5 @@
+#!/usr/bin/python3
+
 import os
 import time
 import sys
@@ -57,10 +59,10 @@ class Go1Env():
         self.kd = 0.5
         self.ka = 0.25
         # Robot Startup object
-        self.robot_init = RealRobotInit(self.udp, self.kp, self.kd)
+        # self.robot_init = RealRobotInit(self.udp, self.kp, self.kd)
 
-        # Safety Confirmation
-        print("robot_init.starting_config = ", self.robot_init.starting_config)
+        # # Safety Confirmation
+        # print("robot_init.starting_config = ", self.robot_init.starting_config)
         print("**************************************")
         print("*********    IMPORTANT    ************")
         print("    ENSURE STARTING CONFIG NONZERO    ")
@@ -70,7 +72,7 @@ class Go1Env():
         getch.getch()
         
         # Make Robot Stand
-        self.robot_init.init_motion()
+        # self.robot_init.init_motion()
 
         print("Robot Init completed")
     
@@ -132,8 +134,8 @@ class Go1Env():
             self.lowcmd.motorCmd[motor_id].tau = self.kp*(self.q_stand[motor_id] - self.q[motor_id]) + self.kd*(-self.dq[motor_id]) + self.kp*self.ka*self.a_cmd[motor_id]  # FF torque
 
         self.safe.PowerProtect(self.lowcmd, self.lowstate, 1)
-        self.udp.SetSend(self.lowcmd)
-        self.udp.Send()
+        # self.udp.SetSend(self.lowcmd)
+        # self.udp.Send()
 
 def main():
 
