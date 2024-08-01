@@ -1,16 +1,13 @@
 import sys
 import os
 import numpy as np
-import threading
-
-# Pybind of the Unitree Legged SDK
-sys.path.append('../third_party/unitree_legged_sdk-3.5.1')
-# sys.path.append('../third_party/unitree_legged_sdk-3.8.0')
-from robot_interface import RobotInterface
+import time
+sys.path.append('../third_party/unitree_legged_sdk/lib/python/amd64')
+import robot_interface as sdk
 
 class RealRobotInit:
 
-    def __init__(self, interface, kp, kd):
+    def __init__(self, udp, kp, kd):
         print("RealRobotInit Constructor")
         self.q_curr = np.zeros(12)
         self.qdot_curr = np.zeros(12)
@@ -28,8 +25,11 @@ class RealRobotInit:
         ##########                      FR               FL              RR               RL
         self.desired_config = np.array([-0.1, 0.8, -1.5, 0.1, 0.8, -1.5, -0.1, 1.0, -1.5, 0.1, 1.0, -1.5])
 
-        self.command = np.zeros(60, dtype=np.float32)
-        self.interface = interface
+        self.udp = udp
+        self.lowcmd = sdk.LowCmd()
+        self.udp.InitCmdData(self.lowcmd)
+
+        self.get_init_config()
 
         self.flag = True
         # getch.getch()
@@ -49,10 +49,12 @@ class RealRobotInit:
 
     def get_init_config(self):
 
-        for idx in range(50000):
-            low_state = self.interface.receive_observation()
-            self.starting_config = np.array([motor.q for motor in low_state.motorState[:12]])
-            #threading.Event().wait(0.002)
+        for idx in range(500):
+            time.sleep(0.002)
+            lowstate = sdk.LowState()
+            self.udp.Recv()
+            self.udp.GetRecv(lowstate)
+            self.starting_config = np.array([motor.q for motor in lowstate.motorState[:12]])
         self.curr_time = 0
 
     def set_desired_config(self, _config):
@@ -60,9 +62,14 @@ class RealRobotInit:
 
 
     def get_robot_config(self):
-        self.low_state = self.interface.receive_observation()
-        self.q_curr = np.array([motor.q for motor in self.low_state.motorState[:12]])
-        self.qdot_curr = np.array([motor.dq for motor in self.low_state.motorState[:12]])
+        time.sleep(0.002)
+        lowstate = sdk.LowState()
+        self.udp.Recv()
+        self.udp.GetRecv(lowstate)
+        print("lowstate = ", lowstate.motorState[0].q)
+        self.q_curr = np.array([motor.q for motor in lowstate.motorState[:12]])
+        self.qdot_curr = np.array([motor.dq for motor in lowstate.motorState[:12]])
+        print("q_curr = ",np.array([motor.q for motor in lowstate.motorState[:12]]))
 
 
     def init_motion(self):
@@ -81,20 +88,21 @@ class RealRobotInit:
             if k == 4:
                 self.get_robot_config()
                 for motor_id in range(12):
-                    self.command[motor_id * 5] = self.jpos_cmd[motor_id]
-                    self.command[motor_id * 5 + 1] = self.kp
-                    self.command[motor_id * 5 + 3] = self.kd
+                    self.lowcmd.motorCmd[motor_id].q = self.jpos_cmd[motor_id]
+                    self.lowcmd.motorCmd[motor_id].Kp = self.kp
+                    self.lowcmd.motorCmd[motor_id].Kd = self.kd
                     k = 0
             else:
                 k += 1
-            self.interface.send_command(self.command)
-            raBodyQ = np.array([self.low_state.imu.quaternion])
-            # print("raBodyQ = ", raBodyQ)
-            threading.Event().wait(0.002)
+            # self.udp.SetSend(self.lowcmd)
+            # self.udp.Send()
+
+            time.sleep(0.002)
 
     def hold_pose(self, hold_time_sec):
-        while self.curr_time <= ((hold_time_sec * 1000) + self.motion_dur):
-            self.curr_time += 2
-            self.interface.send_command(self.command)
-            # print(self.curr_time)
-            threading.Event().wait(0.002)
+        pass
+        # while self.curr_time <= ((hold_time_sec * 1000) + self.motion_dur):
+        #     self.curr_time += 2
+        #     self.interface.send_command(self.command)
+        #     # print(self.curr_time)
+        #     threading.Event().wait(0.002)

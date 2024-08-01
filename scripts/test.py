@@ -1,16 +1,17 @@
 import os
 import time
 import sys
+import math
 import getch
 import numpy as np
 # import torch
 
 
-sys.path.append('../third_party/unitree_legged_sdk-3.5.1/build')
+sys.path.append('../third_party/unitree_legged_sdk/lib/python/amd64')
 sys.path.append('../src')
 sys.path.append('../models')
 
-from robot_interface import RobotInterface
+import robot_interface as sdk
 from real_robot_init import RealRobotInit
 
 
@@ -21,12 +22,16 @@ H = 5
 CONTROL_STEP = 0.002 # 500 Hz ~ 0.002 sec
 POLICY_STEP = 0.02 # 50 Hz ~ 0.02 sec
 
+PosStopF  = math.pow(10,9)
+VelStopF  = 16000.0
+LOWLEVEL  = 0xff
+
 class Go1Env():
 
     def __init__(self):
         self.q_stand = np.array([-0.1, 0.8, -1.5, 0.1, 0.8, -1.5, -0.1, 1.0, -1.5, 0.1, 1.0, -1.5])
-        self.vel_cmd = np.zeros(3)
-        self.a_cmd = np.zeros(12)
+        self.vel_cmd = np.zeros(3) # the policy input, used in concatenated obs
+        self.a_cmd = np.zeros(12) # accel cmd from policy
 
         self.q = np.zeros(12)
         self.dq = np.zeros(12)
@@ -34,12 +39,17 @@ class Go1Env():
 
         # joint angles q [12] (self.q)
         # joint velocities qdot [12] (self.dq)
-        # projected gravity (quat_rot_inv(robot_base_quat, [0,0,-9.81]) ) [3] (self.projected_gravity)
+        # projected gravity [3] (self.projected_gravity)
         # velocity command (xdot, ydot, yaw rate) [3] (self.vel_cmd)
         # last policy output [12] (self.a_cmd)
         self.obs = np.zeros(42)
 
-        self.interface = RobotInterface()
+        self.udp = sdk.UDP(LOWLEVEL, 8080, "192.168.123.10", 8007)
+        self.safe = sdk.Safety(sdk.LeggedType.Go1)
+
+        self.lowcmd = sdk.LowCmd()
+        self.lowstate = sdk.LowState()
+        self.udp.InitCmdData(self.lowcmd)
 
         # PD Gains for robot
         # Kp=20, Kd=0.5, Ka=0.25
@@ -47,8 +57,7 @@ class Go1Env():
         self.kd = 0.5
         self.ka = 0.25
         # Robot Startup object
-        self.robot_init = RealRobotInit(self.interface, self.kp, self.kd)
-        self.robot_init.get_init_config()
+        self.robot_init = RealRobotInit(self.udp, self.kp, self.kd)
 
         # Safety Confirmation
         print("robot_init.starting_config = ", self.robot_init.starting_config)
@@ -97,13 +106,14 @@ class Go1Env():
         return self.obs
 
     def get_obs(self):
-        low_state = self.interface.receive_observation()
+        self.udp.Recv()
+        self.udp.GetRecv(self.lowstate)
         # Joint pos
-        self.q = np.array([motor.q for motor in low_state.motorState[:12]])
+        self.q = np.array([motor.q for motor in self.lowstate.motorState[:12]])
         # Joint vel
-        self.dq = np.array([motor.dq for motor in low_state.motorState[:12]])
+        self.dq = np.array([motor.dq for motor in self.lowstate.motorState[:12]])
         # Body quaternion, normalized, (w,x,y,z)
-        quat = np.array([low_state.imu.quaternion]) 
+        quat = np.array([self.lowstate.imu.quaternion]) 
         self.projected_gravity = self.quat_rot_inv(quat, np.array([0,0,-9.81]))
     
     def run_robot(self):
@@ -114,16 +124,16 @@ class Go1Env():
 
         self.get_obs()
 
-        msgHW = np.zeros(60, dtype=np.float32)
         for motor_id in range(12):
-            msgHW[motor_id * 5] = self.q_stand[motor_id] # q_des
-            msgHW[motor_id * 5 + 1] = self.kp # kp
-            msgHW[motor_id * 5 + 2] = 0 # dq_des
-            msgHW[motor_id * 5 + 3] = self.kd # kd
-            msgHW[motor_id * 5 + 4] = self.kp*(self.q_stand[motor_id] - self.q[motor_id]) + self.kd*(-self.dq[motor_id]) + self.kp*self.ka*self.a_cmd[motor_id]  # FF torque
+            self.lowcmd.motorCmd[motor_id].q = self.q_stand[motor_id] # q_des
+            self.lowcmd.motorCmd[motor_id].Kp = self.kp # kp
+            self.lowcmd.motorCmd[motor_id].dq = 0 # dq_des
+            self.lowcmd.motorCmd[motor_id].Kd = self.kd # kd
+            self.lowcmd.motorCmd[motor_id].tau = self.kp*(self.q_stand[motor_id] - self.q[motor_id]) + self.kd*(-self.dq[motor_id]) + self.kp*self.ka*self.a_cmd[motor_id]  # FF torque
 
-        self.interface.send_command(msgHW)
-
+        self.safe.PowerProtect(self.lowcmd, self.lowstate, 1)
+        self.udp.SetSend(self.lowcmd)
+        self.udp.Send()
 
 def main():
 
