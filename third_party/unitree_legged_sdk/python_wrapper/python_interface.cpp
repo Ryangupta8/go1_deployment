@@ -56,57 +56,7 @@ PYBIND11_MODULE(robot_interface, m) {
       .def("PositionLimit", &Safety::PositionLimit)
       .def("PowerProtect", &Safety::PowerProtect)
       .def("PositionProtect", &Safety::PositionProtect);
-
-  // py::class_<Loop>(m, "Loop")
-  //     .def(py::init<std::string, float, int>())
-  //     .def("functionCB", &Loop::functionCB);
-
-  // py::class_<LoopFunc, Loop>(m, "LoopFunc")
-  //     .def(py::init<std::string, float, const Callback&>());
-  //     // .def(py::init<std::string, float, const boost::function<void ()>& >());
-
-    
-    py::class_<xKeySwitchUnion>(m, "xKeySwitchUnion")
-        .def(py::init<>())
-        .def_property("components",
-            [](xKeySwitchUnion& self) -> const uint8_t& 
-            {
-                return self.components;
-            },
-            [](xKeySwitchUnion& self, const uint8_t& value)
-            {
-                self.components = value;
-            });
-        .def_property("value",
-            [](xKeySwitchUnion& self) -> const uint16_t& 
-            {
-                return self.value;
-            },
-            [](xKeySwitchUnion& self, const uint16_t& value)
-            {
-                self.value = value;
-            });
-
-  py::class_<xRockerBtnDataStruct>(m, "xRockerBtnDataStruct")
-      .def(py::init<>())
-      .def_readwrite("head", &xRockerBtnDataStruct::head)
-      .def_readwrite("btn", &xRockerBtnDataStruct::btn)
-      .def_readwrite("lx", &xRockerBtnDataStruct::lx)
-      .def_readwrite("rx", &xRockerBtnDataStruct::rx)
-      .def_readwrite("ry", &xRockerBtnDataStruct::ry)
-      .def_readwrite("L2", &xRockerBtnDataStruct::L2)
-      .def_readwrite("ly", &xRockerBtnDataStruct::ly);
-  
-  py::class_<xRockerBtnDataStruct>(m, "xRockerBtnDataStruct")
-      .def(py::init<>())
-      .def_readwrite("head", &BmsState::head)
-      .def_readwrite("btn", &BmsState::btn)
-      .def_readwrite("lx", &BmsState::lx)
-      .def_readwrite("rx", &BmsState::rx)
-      .def_readwrite("ry", &BmsState::ry)
-      .def_readwrite("L2", &BmsState::L2)
-      .def_readwrite("ly", &BmsState::ly);
-
+ 
   py::class_<BmsCmd>(m, "BmsCmd")
       .def(py::init<>())
       .def_readwrite("off", &BmsCmd::off)
