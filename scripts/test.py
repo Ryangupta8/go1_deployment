@@ -136,9 +136,9 @@ class Go1Env():
         self.get_obs()
 
         ## Option 1
-        for motor_id in range(12):
-            self.lowcmd.motorCmd[motor_id].q = self.q_stand[motor_id] + self.ka*self.a_cmd[motor_id] # q_des
-            self.lowcmd.motorCmd[motor_id].Kp = self.kp # kp
+        # for motor_id in range(12):
+        #     self.lowcmd.motorCmd[motor_id].q = self.q_stand[motor_id] + self.ka*self.a_cmd[motor_id] # q_des
+        #     self.lowcmd.motorCmd[motor_id].Kp = self.kp # kp
         ## Option 2
         # for motor_id in range(12):
         #     self.lowcmd.motorCmd[motor_id].q = self.q_stand[motor_id] # q_des
@@ -147,8 +147,8 @@ class Go1Env():
         #     self.lowcmd.motorCmd[motor_id].Kd = self.kd # kd
         #     self.lowcmd.motorCmd[motor_id].tau = self.kp*self.ka*self.a_cmd[motor_id]  # FF torque
         ## Option 3
-        # for motor_id in range(12):
-        #    self.lowcmd.motorCmd[motor_id].tau = self.kp*(self.q_stand[motor_id] - self.q[motor_id]) + self.kd*(-self.dq[motor_id]) + self.kp*self.ka*self.a_cmd[motor_id]  # FF torque
+        for motor_id in range(12):
+           self.lowcmd.motorCmd[motor_id].tau = self.kp*(self.q_stand[motor_id] - self.q[motor_id]) + self.kd*(-self.dq[motor_id]) + self.kp*self.ka*self.a_cmd[motor_id]  # FF torque
 
         self.safe.PowerProtect(self.lowcmd, self.lowstate, 1)
         self.udp.SetSend(self.lowcmd)
