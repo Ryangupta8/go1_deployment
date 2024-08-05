@@ -53,16 +53,24 @@ class Go1Env():
         self.lowstate = sdk.LowState()
         self.udp.InitCmdData(self.lowcmd)
 
+        for motor_id in range(12):
+            self.lowcmd.motorCmd[motor_id].q = self.q_stand[motor_id] # q_des
+            self.lowcmd.motorCmd[motor_id].Kp = 0 # kp
+        self.udp.SetSend(self.lowcmd)
+        self.udp.Send()
+
+
+
         # PD Gains for robot
         # Kp=20, Kd=0.5, Ka=0.25
         self.kp = 20
         self.kd = 0.5
         self.ka = 0.25
         # Robot Startup object
-        # self.robot_init = RealRobotInit(self.udp, self.kp, self.kd)
+        self.robot_init = RealRobotInit(self.udp, self.kp, self.kd)
 
         # # Safety Confirmation
-        # print("robot_init.starting_config = ", self.robot_init.starting_config)
+        print("robot_init.starting_config = ", self.robot_init.starting_config)
         print("**************************************")
         print("*********    IMPORTANT    ************")
         print("    ENSURE STARTING CONFIG NONZERO    ")
@@ -72,7 +80,7 @@ class Go1Env():
         getch.getch()
         
         # Make Robot Stand
-        # self.robot_init.init_motion()
+        self.robot_init.init_motion()
 
         print("Robot Init completed")
     
@@ -110,6 +118,7 @@ class Go1Env():
     def get_obs(self):
         self.udp.Recv()
         self.udp.GetRecv(self.lowstate)
+        print("q = ",np.array([motor.q for motor in self.lowstate.motorState[:12]]))
         # Joint pos
         self.q = np.array([motor.q for motor in self.lowstate.motorState[:12]])
         # Joint vel
@@ -134,8 +143,8 @@ class Go1Env():
             self.lowcmd.motorCmd[motor_id].tau = self.kp*(self.q_stand[motor_id] - self.q[motor_id]) + self.kd*(-self.dq[motor_id]) + self.kp*self.ka*self.a_cmd[motor_id]  # FF torque
 
         self.safe.PowerProtect(self.lowcmd, self.lowstate, 1)
-        # self.udp.SetSend(self.lowcmd)
-        # self.udp.Send()
+        self.udp.SetSend(self.lowcmd)
+        self.udp.Send()
 
 def main():
 

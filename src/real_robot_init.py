@@ -23,7 +23,7 @@ class RealRobotInit:
         self.kd = kd
         
         ##########                      FR               FL              RR               RL
-        self.desired_config = np.array([-0.1, 0.8, -1.5, 0.1, 0.8, -1.5, -0.1, 1.0, -1.5, 0.1, 1.0, -1.5])
+        self.desired_config = np.array([-0., 0.8, -1.5, 0., 0.8, -1.5, -0., 1.0, -1.5, 0., 1.0, -1.5])
 
         self.udp = udp
         self.lowcmd = sdk.LowCmd()
@@ -94,8 +94,8 @@ class RealRobotInit:
                     k = 0
             else:
                 k += 1
-            # self.udp.SetSend(self.lowcmd)
-            # self.udp.Send()
+            self.udp.SetSend(self.lowcmd)
+            self.udp.Send()
 
             time.sleep(0.002)
 
