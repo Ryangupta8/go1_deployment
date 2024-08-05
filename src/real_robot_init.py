@@ -8,7 +8,7 @@ import robot_interface as sdk
 class RealRobotInit:
 
     def __init__(self, udp, kp, kd):
-        print("RealRobotInit Constructor")
+        print("RealRobotInit")
         self.q_curr = np.zeros(12)
         self.qdot_curr = np.zeros(12)
 
@@ -66,10 +66,10 @@ class RealRobotInit:
         lowstate = sdk.LowState()
         self.udp.Recv()
         self.udp.GetRecv(lowstate)
-        print("lowstate = ", lowstate.motorState[0].q)
+        # print("lowstate = ", lowstate.motorState[0].q)
         self.q_curr = np.array([motor.q for motor in lowstate.motorState[:12]])
         self.qdot_curr = np.array([motor.dq for motor in lowstate.motorState[:12]])
-        print("q_curr = ",np.array([motor.q for motor in lowstate.motorState[:12]]))
+        # print("q_curr = ",np.array([motor.q for motor in lowstate.motorState[:12]]))
 
 
     def init_motion(self):

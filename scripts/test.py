@@ -105,11 +105,11 @@ class Go1Env():
         while ((time.time() - step_time) < POLICY_STEP):
             self.run_robot()
 
-        # print("self.obs.shape = ", self.q.shape)
-        # print("self.obs.shape = ", self.dq.shape)
-        # print("self.obs.shape = ", self.projected_gravity.shape)
-        # print("self.obs.shape = ", self.vel_cmd.shape)
-        # print("self.obs.shape = ", self.a_cmd.shape)
+        # print("self.q.shape = ", self.q.shape)
+        # print("self.dq.shape = ", self.dq.shape)
+        # print("self.projected_gravity.shape = ", self.projected_gravity.shape)
+        # print("self.vel_cmd.shape = ", self.vel_cmd.shape)
+        # print("self.a_cmd.shape = ", self.a_cmd.shape)
         # Update self.obs and send back to policy
         self.obs = np.concatenate((self.q, self.dq, self.projected_gravity, self.vel_cmd, self.a_cmd), axis=0).flatten()
         # print("self.obs.shape = ", self.obs.shape)
@@ -118,7 +118,7 @@ class Go1Env():
     def get_obs(self):
         self.udp.Recv()
         self.udp.GetRecv(self.lowstate)
-        print("q = ",np.array([motor.q for motor in self.lowstate.motorState[:12]]))
+        # print("q = ",np.array([motor.q for motor in self.lowstate.motorState[:12]]))
         # Joint pos
         self.q = np.array([motor.q for motor in self.lowstate.motorState[:12]])
         # Joint vel
@@ -135,12 +135,20 @@ class Go1Env():
 
         self.get_obs()
 
+        ## Option 1
         for motor_id in range(12):
-            self.lowcmd.motorCmd[motor_id].q = self.q_stand[motor_id] # q_des
+            self.lowcmd.motorCmd[motor_id].q = self.q_stand[motor_id] + self.ka*self.a_cmd[motor_id] # q_des
             self.lowcmd.motorCmd[motor_id].Kp = self.kp # kp
-            self.lowcmd.motorCmd[motor_id].dq = 0 # dq_des
-            self.lowcmd.motorCmd[motor_id].Kd = self.kd # kd
-            self.lowcmd.motorCmd[motor_id].tau = self.kp*(self.q_stand[motor_id] - self.q[motor_id]) + self.kd*(-self.dq[motor_id]) + self.kp*self.ka*self.a_cmd[motor_id]  # FF torque
+        ## Option 2
+        # for motor_id in range(12):
+        #     self.lowcmd.motorCmd[motor_id].q = self.q_stand[motor_id] # q_des
+        #     self.lowcmd.motorCmd[motor_id].Kp = self.kp # kp
+        #     self.lowcmd.motorCmd[motor_id].dq = 0 # dq_des
+        #     self.lowcmd.motorCmd[motor_id].Kd = self.kd # kd
+        #     self.lowcmd.motorCmd[motor_id].tau = self.kp*self.ka*self.a_cmd[motor_id]  # FF torque
+        ## Option 3
+        # for motor_id in range(12):
+        #    self.lowcmd.motorCmd[motor_id].tau = self.kp*(self.q_stand[motor_id] - self.q[motor_id]) + self.kd*(-self.dq[motor_id]) + self.kp*self.ka*self.a_cmd[motor_id]  # FF torque
 
         self.safe.PowerProtect(self.lowcmd, self.lowstate, 1)
         self.udp.SetSend(self.lowcmd)
