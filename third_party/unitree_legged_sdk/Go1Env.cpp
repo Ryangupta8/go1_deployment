@@ -31,10 +31,14 @@ public:
 
   double CONTROL_STEP = 0.002;
   double POLICY_STEP = 0.02;
+  double init_motion_dur = 5000; // 10 seconds
   int H = 5;
+
+  double curr_time;
 
   VectorXd q_stand(-0.1, 0.8, -1.5, 0.1, 0.8, -1.5, -0.1, 1.0, -1.5, 0.1, 1.0, -1.5);
   Vector3d vel_cmd, projected_gravity;
+  VectorXd jpos_cmd_init, starting_config;
   Quaterniond body_quat;
   VectorXd = q, dq, a_cmd;
   double obs[42]
@@ -52,21 +56,50 @@ public:
     q = Eigen::VectorXd::Zero(12);
     dq = Eigen::VectorXd::Zero(12);
     a_cmd = Eigen::VectorXd::Zero(12);
-    
+
+    jpos_cmd_init = Eigen::VectorXd::Zero(12);
+    starting_config = Eigen::VectorXd::Zero(12);
+
     vel_cmd = Eigen::VectorXd::Zero(3);
     projected_gravity = Eigen::VectorXd::Zero(3);
 
     init = 0;
+    curr_time = 0;
+  }
+
+  void smooth_changing(int idx){
+    
+    jpos_cmd_init[idx] = starting_config[idx] + 
+                (q_stand[idx] - starting_config[idx]) *
+                0.5 * (1. - cos(curr_time / init_motion_dur * M_PI));
+    if(curr_time > init_motion_dur) jpos_cmd_init[idx] = q_stand[idx];
 
   }
 
   void init_robot(){
+    std::cout << "starting config FR = [" << starting_config[0] << ", " << 
+              starting_config[1] << ", " << starting_config[2] << "]" << std::endl;
     std::cout << "**************************************" << std::endl
               << "*********    IMPORTANT    ************" << std::endl
               << "    ENSURE STARTING CONFIG NONZERO    " << std::endl
               << "**************************************" << std::endl
-              << "Press any key to continue ..." << std::endl;
+              << "Then press any key to continue ..." << std::endl;
     std::cin.ignore();
+
+    while(curr_time < init_motion_dur){
+      curr_time += 2;
+
+      udp.GetRecv(state);
+
+      for(int k=0; k<12; ++k){
+        smooth_changing[k];
+        cmd.motorCmd[k].q = jpos_cmd_init[k];
+        cmd.motorCmd[k].Kp = kp;
+        cmd.motorCmd[k].Kd = kd;
+      }
+      //todo time.sleep
+    }
+
   }
 
   void UDPRecv(){
@@ -110,6 +143,9 @@ public:
     quat_rot_inv(body_quat);
 
     if(!init){
+      for(int i=0; i<12; ++i){
+        starting_config[i] = q[i];
+      }
       init_robot();
       init = 1;
     }
