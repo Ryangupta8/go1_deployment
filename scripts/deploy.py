@@ -6,6 +6,7 @@ import sys
 import math
 import getch
 import numpy as np
+import pickle
 # import torch
 
 
@@ -97,7 +98,6 @@ class Go1Env():
         return a - b + c
 
     def step(self, a_cmd):
-        # self.vel_cmd = vel_cmd
         self.a_cmd = a_cmd
 
         step_time = time.time()
@@ -114,7 +114,9 @@ class Go1Env():
         # Update self.obs and send back to policy
         self.obs = np.concatenate((self.q, self.dq, self.projected_gravity, self.vel_cmd, self.a_cmd), axis=0).flatten()
         # print("self.obs.shape = ", self.obs.shape)
-        return self.obs
+
+
+        return self.obs, self.lowstate
 
     def get_obs(self):
         self.udp.Recv()
@@ -252,16 +254,19 @@ def main():
     steps = 0
     obs_history = np.zeros((42, H))
 
-    # vel_cmd = np.array([0,0,0]) # policy input
-    q_cmd = np.zeros(12)# policy output
-    ## todo 
-    #     - init obs_history from real readings
-    #     - check dims on everything
+    a_cmd = np.zeros(12, dtype=float) # policy output
+
+    save_logs = []
 
     while steps < 1000:
 
-        obs = env.step(q_cmd)
+        # obs = np.concatenate(q, dq, projected_gravity, vel_cmd, a_cmd)
+        # lowstate = unitree_legged_sdk::LowState
+        obs, lowstate = env.step(a_cmd)
         obs = np.expand_dims(obs, axis=1)
+
+        cur_time = time.time()
+
         # print("obs_history.shape = ", obs_history.shape)
         # print("obs.shape = ", obs.shape)
 
@@ -272,8 +277,19 @@ def main():
         obs_history = np.append(obs, obs_history, axis=1)
         # print("obs_history.shape = ", obs_history.shape)
 
-        ## Call policy; update vel_cmd and q_cmd
+        ## Call policy; update a_cmd
 
+        save_logs.append({"time": cur_time, "a_cmd": a_cmd[:], "q": obs[:12], "dq": obs[12:24], \
+                "ddq": lowstate.motorState.ddq[:], "tauEst": lowstate.motorState.tauEst[:], \
+                "projected_gravity": obs[24:27], "vel_cmd": obs[27:30], "a_cmd": obs[-12:], \
+                "wirelessRemote": lowstate.wirelessRemote[:], "footforce": lowstate.footForce[:], \
+                "footforceEst": lowstate.footForceEst[:], "quaternion": lowstate.imu.quaternion[:], \
+                "gyroscope": lowstate.imu.gyroscope[:], "accelerometer": lowstate.imu.accelerometer[:], \
+                "rpy": lowstate.imu.rpy[:]})
+
+    ## todo kyle implement file naming convention
+    with open('filename.pickle', 'wb') as handle:
+        pickle.dump(save_logs, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 if __name__ == "__main__":
     main()
