@@ -56,8 +56,8 @@ class Go1Env():
         for motor_id in range(12):
             self.lowcmd.motorCmd[motor_id].q = self.q_stand[motor_id] # q_des
             self.lowcmd.motorCmd[motor_id].Kp = 0 # kp
-        self.udp.SetSend(self.lowcmd)
-        self.udp.Send()
+        # self.udp.SetSend(self.lowcmd)
+        # self.udp.Send()
 
 
 
@@ -80,7 +80,7 @@ class Go1Env():
         getch.getch()
         
         # Make Robot Stand
-        self.robot_init.init_motion()
+        # self.robot_init.init_motion()
 
         print("Robot Init completed")
     
@@ -198,8 +198,17 @@ class Go1Env():
         else:
             self.vel_cmd[2] = 0.0
 
-        print("velocity command = ", self.vel_cmd)
+        # print("velocity command = ", self.vel_cmd)
 
+        # print("wirelessRemote = ", wirelessRemote[2])
+        if wirelessRemote[2] == 16:
+            ## R2 Right Trigger
+            print("E-STOP TRIGGERED")
+            exit(1)
+        elif wirelessRemote[2] == 32:
+            ## L2 Left Trigger
+            ## todo Kyle
+            pass
         ## Unused
         # 39 appears to roughly be the right forwards/backwards
         # 15 is right stick forward/backwards (can get direction)
@@ -231,8 +240,8 @@ class Go1Env():
         #    self.lowcmd.motorCmd[motor_id].tau = self.kp*(self.q_stand[motor_id] - self.q[motor_id]) + self.kd*(-self.dq[motor_id]) + self.kp*self.ka*self.a_cmd[motor_id]  # FF torque
 
         self.safe.PowerProtect(self.lowcmd, self.lowstate, 1)
-        self.udp.SetSend(self.lowcmd)
-        self.udp.Send()
+        # self.udp.SetSend(self.lowcmd)
+        # self.udp.Send()
 
 def main():
 
