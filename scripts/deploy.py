@@ -8,6 +8,8 @@ import getch
 import numpy as np
 import pickle
 # import torch
+import datetime
+import onnxruntime as ort
 
 
 sys.path.append('../third_party/unitree_legged_sdk/lib/python/amd64')
@@ -83,6 +85,8 @@ class Go1Env():
         # Make Robot Stand
         # self.robot_init.init_motion()
 
+        self.stance_trigger = 1
+
         print("Robot Init completed")
     
     def quat_rot_inv(self, body_quat, gravity):
@@ -123,7 +127,7 @@ class Go1Env():
         self.udp.GetRecv(self.lowstate)
         # print("q = ",np.array([motor.q for motor in self.lowstate.motorState[:12]]))
         # Joint pos
-        self.q = np.array([motor.q for motor in self.lowstate.motorState[:12]])
+        self.q = np.array([motor.q for motor in self.lowstate.motorState[:12]]) - self.q_stand  # q is relative to default config
         # Joint vel
         self.dq = np.array([motor.dq for motor in self.lowstate.motorState[:12]])
         # Body quaternion, normalized, (w,x,y,z)
@@ -207,10 +211,11 @@ class Go1Env():
             ## R2 Right Trigger
             print("E-STOP TRIGGERED")
             exit(1)
-        elif wirelessRemote[2] == 32:
+        if wirelessRemote[2] == 32:
             ## L2 Left Trigger
-            ## todo Kyle
-            pass
+            self.stance_trigger = 0
+        else:
+            self.stance_trigger = 1
         ## Unused
         # 39 appears to roughly be the right forwards/backwards
         # 15 is right stick forward/backwards (can get direction)
@@ -236,7 +241,7 @@ class Go1Env():
             self.lowcmd.motorCmd[motor_id].Kp = self.kp # kp
             self.lowcmd.motorCmd[motor_id].dq = 0 # dq_des
             self.lowcmd.motorCmd[motor_id].Kd = self.kd # kd
-            self.lowcmd.motorCmd[motor_id].tau = self.kp*self.ka*self.a_cmd[motor_id]  # FF torque
+            self.lowcmd.motorCmd[motor_id].tau = self.stance_trigger*self.kp*self.ka*self.a_cmd[motor_id]  # FF torque
         ## Option 3 ## NOT STABLE
         # for motor_id in range(12):
         #    self.lowcmd.motorCmd[motor_id].tau = self.kp*(self.q_stand[motor_id] - self.q[motor_id]) + self.kd*(-self.dq[motor_id]) + self.kp*self.ka*self.a_cmd[motor_id]  # FF torque
@@ -247,9 +252,11 @@ class Go1Env():
 
 def main():
 
-    ## todo load the model
-
     env = Go1Env()
+
+    # Load onnx policy
+    ort_session = ort.InferenceSession("policy.onnx")
+
 
     steps = 0
     obs_history = np.zeros((42, H))
@@ -257,6 +264,13 @@ def main():
     a_cmd = np.zeros(12, dtype=float) # policy output
 
     save_logs = []
+    now = datetime.datetime.now()
+    date = now.strftime("%b-%d-%Y_%H%M")
+
+    # stand for 1 second before activating the policy
+    for _ in range(50):
+        obs, lowstate = env.step(a_cmd)
+        # TODO add logging for initial stance as well
 
     while steps < 1000:
 
@@ -278,6 +292,7 @@ def main():
         # print("obs_history.shape = ", obs_history.shape)
 
         ## Call policy; update a_cmd
+        a_cmd = ort_session.run(None, {"obs": obs_history.reshape(1, -1)})[0]
 
         save_logs.append({"time": cur_time, "a_cmd": a_cmd[:], "q": obs[:12], "dq": obs[12:24], \
                 "ddq": lowstate.motorState.ddq[:], "tauEst": lowstate.motorState.tauEst[:], \
@@ -287,8 +302,9 @@ def main():
                 "gyroscope": lowstate.imu.gyroscope[:], "accelerometer": lowstate.imu.accelerometer[:], \
                 "rpy": lowstate.imu.rpy[:]})
 
-    ## todo kyle implement file naming convention
-    with open('filename.pickle', 'wb') as handle:
+    ## TODO does estop kill the logs? we should just break out of the loop
+    ## and kill the motors but the logs should still be saved
+    with open('{date}.pickle'.format(date=date), 'wb') as handle:
         pickle.dump(save_logs, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 if __name__ == "__main__":
