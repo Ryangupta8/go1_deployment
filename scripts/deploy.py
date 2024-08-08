@@ -49,6 +49,8 @@ class Go1Env():
         # last policy output [12] (self.a_cmd)
         self.obs = np.zeros(42)
 
+        self.estop = 0
+
         self.udp = sdk.UDP(LOWLEVEL, 8080, "192.168.123.10", 8007)
         self.safe = sdk.Safety(sdk.LeggedType.Go1)
 
@@ -210,7 +212,8 @@ class Go1Env():
         if wirelessRemote[2] == 16:
             ## R2 Right Trigger
             print("E-STOP TRIGGERED")
-            exit(1)
+            self.estop = 1
+            # exit(1)
         if wirelessRemote[2] == 32:
             ## L2 Left Trigger
             self.stance_trigger = 0
@@ -270,9 +273,15 @@ def main():
     # stand for 1 second before activating the policy
     for _ in range(50):
         obs, lowstate = env.step(a_cmd)
-        # TODO add logging for initial stance as well
+        save_logs.append({"time": cur_time, "a_cmd": a_cmd[:], "q": obs[:12], "dq": obs[12:24], \
+                "ddq": lowstate.motorState.ddq[:], "tauEst": lowstate.motorState.tauEst[:], \
+                "projected_gravity": obs[24:27], "vel_cmd": obs[27:30], "a_cmd": obs[-12:], \
+                "wirelessRemote": lowstate.wirelessRemote[:], "footforce": lowstate.footForce[:], \
+                "footforceEst": lowstate.footForceEst[:], "quaternion": lowstate.imu.quaternion[:], \
+                "gyroscope": lowstate.imu.gyroscope[:], "accelerometer": lowstate.imu.accelerometer[:], \
+                "rpy": lowstate.imu.rpy[:]})
 
-    while steps < 1000:
+    while not env.estop:
 
         # obs = np.concatenate(q, dq, projected_gravity, vel_cmd, a_cmd)
         # lowstate = unitree_legged_sdk::LowState
@@ -302,8 +311,6 @@ def main():
                 "gyroscope": lowstate.imu.gyroscope[:], "accelerometer": lowstate.imu.accelerometer[:], \
                 "rpy": lowstate.imu.rpy[:]})
 
-    ## TODO does estop kill the logs? we should just break out of the loop
-    ## and kill the motors but the logs should still be saved
     with open('{date}.pickle'.format(date=date), 'wb') as handle:
         pickle.dump(save_logs, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
