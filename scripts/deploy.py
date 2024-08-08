@@ -35,19 +35,19 @@ class Go1Env():
 
     def __init__(self):
         self.q_stand = np.array([-0.1, 0.8, -1.5, 0.1, 0.8, -1.5, -0.1, 1.0, -1.5, 0.1, 1.0, -1.5])
-        self.vel_cmd = np.zeros(3, dtype=float) # the policy input, used in concatenated obs
-        self.a_cmd = np.zeros(12, dtype=float) # accel cmd from policy
+        self.vel_cmd = np.zeros(3, dtype=np.float32) # the policy input, used in concatenated obs
+        self.a_cmd = np.zeros(12, dtype=np.float32) # accel cmd from policy
 
-        self.q = np.zeros(12)
-        self.dq = np.zeros(12)
-        self.projected_gavity = np.zeros(3)
+        self.q = np.zeros(12,dtype=np.float32)
+        self.dq = np.zeros(12,dtype=np.float32)
+        self.projected_gavity = np.zeros(3,dtype=np.float32)
 
         # joint angles q [12] (self.q)
         # joint velocities qdot [12] (self.dq)
         # projected gravity [3] (self.projected_gravity)
         # velocity command (xdot, ydot, yaw rate) [3] (self.vel_cmd)
         # last policy output [12] (self.a_cmd)
-        self.obs = np.zeros(42)
+        self.obs = np.zeros(42, dtype=np.float32)
 
         self.estop = 0
 
@@ -85,7 +85,7 @@ class Go1Env():
         getch.getch()
         
         # Make Robot Stand
-        # self.robot_init.init_motion()
+        self.robot_init.init_motion()
 
         self.stance_trigger = 1
 
@@ -118,7 +118,7 @@ class Go1Env():
         # print("self.vel_cmd.shape = ", self.vel_cmd.shape)
         # print("self.a_cmd.shape = ", self.a_cmd.shape)
         # Update self.obs and send back to policy
-        self.obs = np.concatenate((self.q, self.dq, self.projected_gravity, self.vel_cmd, self.a_cmd), axis=0).flatten()
+        self.obs = np.concatenate((self.projected_gravity, self.vel_cmd, self.q, self.dq, self.a_cmd), axis=0).flatten()
         # print("self.obs.shape = ", self.obs.shape)
 
 
@@ -130,8 +130,10 @@ class Go1Env():
         # print("q = ",np.array([motor.q for motor in self.lowstate.motorState[:12]]))
         # Joint pos
         self.q = np.array([motor.q for motor in self.lowstate.motorState[:12]]) - self.q_stand  # q is relative to default config
+        self.q = self.robot_to_policy_joint_reorder(self.q)
         # Joint vel
         self.dq = np.array([motor.dq for motor in self.lowstate.motorState[:12]])
+        self.dq = self.robot_to_policy_joint_reorder(self.dq)
         # Body quaternion, normalized, (w,x,y,z)
         quat = np.array([self.lowstate.imu.quaternion]) 
         self.projected_gravity = self.quat_rot_inv(quat, np.array([0,0,-9.81]))
@@ -145,13 +147,13 @@ class Go1Env():
         # if left stick being pressed forward
         #print(type(wirelessRemote[23]))
         #print(type(float(wirelessRemote[22])))
-        print(float(wirelessRemote[22]))
+        # print(float(wirelessRemote[22]))
         if (59 <= wirelessRemote[23] <= 63):
             if wirelessRemote[23] != 63:
                 intensity = float(wirelessRemote[22]) / 384.
             elif wirelessRemote[23] == 63:
                 intensity = float((wirelessRemote[22] + 256.)) / 384.
-            print(intensity)
+            # print(intensity)
             self.vel_cmd[0] = intensity
         # if left stick being pressed backward
         elif (187 <= wirelessRemote[23] <= 191):
@@ -234,6 +236,7 @@ class Go1Env():
 
         self.get_obs()
 
+        a_cmd_robot = self.policy_to_robot_joint_reorder(self.a_cmd)
         ## Option 1
         # for motor_id in range(12):
         #     self.lowcmd.motorCmd[motor_id].q = self.q_stand[motor_id] + self.ka*self.a_cmd[motor_id] # q_des
@@ -244,42 +247,78 @@ class Go1Env():
             self.lowcmd.motorCmd[motor_id].Kp = self.kp # kp
             self.lowcmd.motorCmd[motor_id].dq = 0 # dq_des
             self.lowcmd.motorCmd[motor_id].Kd = self.kd # kd
-            self.lowcmd.motorCmd[motor_id].tau = self.stance_trigger*self.kp*self.ka*self.a_cmd[motor_id]  # FF torque
-        ## Option 3 ## NOT STABLE
-        # for motor_id in range(12):
-        #    self.lowcmd.motorCmd[motor_id].tau = self.kp*(self.q_stand[motor_id] - self.q[motor_id]) + self.kd*(-self.dq[motor_id]) + self.kp*self.ka*self.a_cmd[motor_id]  # FF torque
-
+            self.lowcmd.motorCmd[motor_id].tau = self.stance_trigger*self.kp*self.ka*a_cmd_robot[motor_id]  # FF torque
+        
         self.safe.PowerProtect(self.lowcmd, self.lowstate, 1)
-        # self.udp.SetSend(self.lowcmd)
-        # self.udp.Send()
+        self.udp.SetSend(self.lowcmd)
+        self.udp.Send()
+
+    def robot_to_policy_joint_reorder(self, inp):
+        policy_joint_order = np.zeros(12,dtype=np.float32)
+        policy_joint_order[0] = inp[3] # FL Hip
+        policy_joint_order[1] = inp[0] # FR Hip
+        policy_joint_order[2] = inp[9] # RL Hip
+        policy_joint_order[3] = inp[6] # RR Hip
+        policy_joint_order[4] = inp[4] # FL Thigh
+        policy_joint_order[5] = inp[1] # FR Thigh
+        policy_joint_order[6] = inp[10] # RL Thigh
+        policy_joint_order[7] = inp[7] # RR Thigh
+        policy_joint_order[8] = inp[5] # FL Calf
+        policy_joint_order[9] = inp[2] # FR Calf
+        policy_joint_order[10] = inp[11] # RL Calf
+        policy_joint_order[11] = inp[8] # RR Calf
+
+        return policy_joint_order
+
+    ## Robot Joint Order: [FRhip,thigh,calf, FLhip,thigh,calf, RR
+    def policy_to_robot_joint_reorder(self, inp):
+        robot_joint_order = np.zeros(12,dtype=np.float32)
+        robot_joint_order[0] = inp[1] # FR Hip
+        robot_joint_order[1] = inp[5] # FR Thigh
+        robot_joint_order[2] = inp[9] # FR Calf
+        robot_joint_order[3] = inp[0] # FL Hip
+        robot_joint_order[4] = inp[4] # FL Thigh
+        robot_joint_order[5] = inp[8] # FL Calf
+        robot_joint_order[6] = inp[3] # RR Hip
+        robot_joint_order[7] = inp[7] # RR Thigh
+        robot_joint_order[8] = inp[11] # RR Calf
+        robot_joint_order[9] = inp[2] # RL Hip
+        robot_joint_order[10] = inp[6] # RL Thigh
+        robot_joint_order[11] = inp[10] # RL Calf
+
+        return robot_joint_order
 
 def main():
 
+    # Load onnx policy
+    ort_session = ort.InferenceSession("../models/policy.onnx")
+
     env = Go1Env()
 
-    # Load onnx policy
-    ort_session = ort.InferenceSession("policy.onnx")
-
-
     steps = 0
-    obs_history = np.zeros((42, H))
+    obs_history = np.zeros((42, H),dtype=np.float32)
 
-    a_cmd = np.zeros(12, dtype=float) # policy output
+    a_cmd = np.zeros(12, dtype=np.float32) # policy output
 
     save_logs = []
     now = datetime.datetime.now()
     date = now.strftime("%b-%d-%Y_%H%M")
+    cur_time = time.time()
 
-    # stand for 1 second before activating the policy
-    for _ in range(50):
+    # stand for 5 second before activating the policy
+    for _ in range(250):
         obs, lowstate = env.step(a_cmd)
+        ddq = np.array([motor.ddq for motor in lowstate.motorState[:12]])
+        tauEst = np.array([motor.tauEst for motor in lowstate.motorState[:12]])
         save_logs.append({"time": cur_time, "a_cmd": a_cmd[:], "q": obs[:12], "dq": obs[12:24], \
-                "ddq": lowstate.motorState.ddq[:], "tauEst": lowstate.motorState.tauEst[:], \
+                "ddq": ddq, "tauEst": tauEst, \
                 "projected_gravity": obs[24:27], "vel_cmd": obs[27:30], "a_cmd": obs[-12:], \
                 "wirelessRemote": lowstate.wirelessRemote[:], "footforce": lowstate.footForce[:], \
                 "footforceEst": lowstate.footForceEst[:], "quaternion": lowstate.imu.quaternion[:], \
                 "gyroscope": lowstate.imu.gyroscope[:], "accelerometer": lowstate.imu.accelerometer[:], \
                 "rpy": lowstate.imu.rpy[:]})
+
+    print ("Begin Policy Now")
 
     while not env.estop:
 
@@ -301,10 +340,13 @@ def main():
         # print("obs_history.shape = ", obs_history.shape)
 
         ## Call policy; update a_cmd
-        a_cmd = ort_session.run(None, {"obs": obs_history.reshape(1, -1)})[0]
+        # a_cmd = ort_session.run(None, {"obs": obs_history.reshape(1, -1)})[0].flatten()
+        a_cmd = ort_session.run(None, {"obs": obs.astype(np.float32).reshape((1, -1))})[0].flatten()
 
+        ddq = np.array([motor.ddq for motor in lowstate.motorState[:12]])
+        tauEst = np.array([motor.tauEst for motor in lowstate.motorState[:12]])
         save_logs.append({"time": cur_time, "a_cmd": a_cmd[:], "q": obs[:12], "dq": obs[12:24], \
-                "ddq": lowstate.motorState.ddq[:], "tauEst": lowstate.motorState.tauEst[:], \
+                "ddq": ddq, "tauEst": tauEst, \
                 "projected_gravity": obs[24:27], "vel_cmd": obs[27:30], "a_cmd": obs[-12:], \
                 "wirelessRemote": lowstate.wirelessRemote[:], "footforce": lowstate.footForce[:], \
                 "footforceEst": lowstate.footForceEst[:], "quaternion": lowstate.imu.quaternion[:], \
