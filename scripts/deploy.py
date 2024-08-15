@@ -288,6 +288,16 @@ class Go1Env():
 
         return robot_joint_order
 
+def flatten_for_policy(obs) -> np.NDArray[np.float32]:
+    proj_g = obs[0:3, :].reshape((1, -1))
+    vel_cmd = obs[3:6, :].reshape((1, -1))
+    q = obs[6:18, :].reshape((1, -1))
+    dq = obs[18:30, :].reshape((1, -1))
+    last_action = obs[30:42, :].reshape((1, -1))
+    obs_flat = np.concatenate((proj_g, vel_cmd, q, dq, last_action), axis=1)
+    return np.float32(obs_flat)
+
+
 def main():
 
     # Load onnx policy
@@ -339,9 +349,11 @@ def main():
         obs_history = np.append(obs, obs_history, axis=1)
         # print("obs_history.shape = ", obs_history.shape)
 
+        obs_flat = flatten_for_policy(obs_history)
+
         ## Call policy; update a_cmd
         # a_cmd = ort_session.run(None, {"obs": obs_history.reshape(1, -1)})[0].flatten()
-        a_cmd = ort_session.run(None, {"obs": obs.astype(np.float32).reshape((1, -1))})[0].flatten()
+        a_cmd = ort_session.run(None, {"obs": obs_flat})[0].flatten()
 
         ddq = np.array([motor.ddq for motor in lowstate.motorState[:12]])
         tauEst = np.array([motor.tauEst for motor in lowstate.motorState[:12]])
