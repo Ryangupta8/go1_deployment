@@ -23,7 +23,7 @@ from real_robot_init import RealRobotInit
 ## Constants
 
 # Time history of observation buffer
-H = 5
+H = 10
 CONTROL_STEP = 0.002 # 500 Hz ~ 0.002 sec
 POLICY_STEP = 0.02 # 50 Hz ~ 0.02 sec
 
