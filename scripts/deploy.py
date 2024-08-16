@@ -294,8 +294,16 @@ def flatten_for_policy(obs) -> np.ndarray[np.float32]:
     q = obs[6:18, :].reshape((1, -1))
     dq = obs[18:30, :].reshape((1, -1))
     last_action = obs[30:42, :].reshape((1, -1))
+    print("proj_g.shape = ", proj_g.shape)
+    print("vel_cmd.shape = ", vel_cmd.shape)
+    print("q.shape = ", q.shape)
+    print("dq.shape = ", dq.shape)
+    print("last_action.shape = ", last_action.shape)
     obs_flat = np.concatenate((proj_g, vel_cmd, q, dq, last_action), axis=1)
+    print("obs_flat.shape = ", obs_flat.shape)
+    print("obs_flat.flatten().shape = ", obs_flat.flatten().shape)
     return np.float32(obs_flat)
+
 
 
 def main():
@@ -320,9 +328,9 @@ def main():
         obs, lowstate = env.step(a_cmd)
         ddq = np.array([motor.ddq for motor in lowstate.motorState[:12]])
         tauEst = np.array([motor.tauEst for motor in lowstate.motorState[:12]])
-        save_logs.append({"time": cur_time, "a_cmd": a_cmd[:], "q": obs[:12], "dq": obs[12:24], \
+        save_logs.append({"time": cur_time, "q": obs[6:18], "dq": obs[18:30], \
                 "ddq": ddq, "tauEst": tauEst, \
-                "projected_gravity": obs[24:27], "vel_cmd": obs[27:30], "a_cmd": obs[-12:], \
+                "projected_gravity": obs[:3], "vel_cmd": obs[3:6], "a_cmd": obs[30:42], \
                 "wirelessRemote": lowstate.wirelessRemote[:], "footforce": lowstate.footForce[:], \
                 "footforceEst": lowstate.footForceEst[:], "quaternion": lowstate.imu.quaternion[:], \
                 "gyroscope": lowstate.imu.gyroscope[:], "accelerometer": lowstate.imu.accelerometer[:], \
@@ -344,12 +352,13 @@ def main():
         print(obs[3:6])
         print()
         ## Organized such that newest obs goes on top
-        ## and oldest at the bottom
+        ## and oldest at the bottom is deletedbut 
         obs_history = np.delete(obs_history, -1, axis=1)
         # print("obs_history.shape = ", obs_history.shape)
         obs_history = np.append(obs, obs_history, axis=1)
         # print("obs_history.shape = ", obs_history.shape)
 
+        ## Kyle's method of flattening the obs
         obs_flat = flatten_for_policy(obs_history)
 
         ## Call policy; update a_cmd
