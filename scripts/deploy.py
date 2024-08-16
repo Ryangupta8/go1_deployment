@@ -67,8 +67,8 @@ class Go1Env():
 
 
         # PD Gains for robot
-        # Kp=20, Kd=0.5, Ka=0.25
-        self.kp = 30
+        # Kp=30, Kd=0.5, Ka=0.25
+        self.kp = 40
         self.kd = 0.5
         self.ka = 0.25
         # Robot Startup object
@@ -288,7 +288,7 @@ class Go1Env():
 
         return robot_joint_order
 
-def flatten_for_policy(obs) -> np.NDArray[np.float32]:
+def flatten_for_policy(obs) -> np.ndarray[np.float32]:
     proj_g = obs[0:3, :].reshape((1, -1))
     vel_cmd = obs[3:6, :].reshape((1, -1))
     q = obs[6:18, :].reshape((1, -1))
@@ -301,7 +301,7 @@ def flatten_for_policy(obs) -> np.NDArray[np.float32]:
 def main():
 
     # Load onnx policy
-    ort_session = ort.InferenceSession("../models/policy.onnx")
+    ort_session = ort.InferenceSession("../models/model_94000.onnx")
 
     env = Go1Env()
 
@@ -341,7 +341,8 @@ def main():
 
         # print("obs_history.shape = ", obs_history.shape)
         # print("obs.shape = ", obs.shape)
-
+        print(obs[3:6])
+        print()
         ## Organized such that newest obs goes on top
         ## and oldest at the bottom
         obs_history = np.delete(obs_history, -1, axis=1)
