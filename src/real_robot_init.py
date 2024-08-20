@@ -1,14 +1,16 @@
 # import sys
 import numpy as np
 import time
+from typing import Any
 from ..third_party import robot_interface as sdk
+from ..scripts import CONTROL_STEP
 
 # sys.path.append("../third_party/unitree_legged_sdk/lib/python/amd64")
 # sys.path.append()
 
 
 class RealRobotInit:
-    def __init__(self, udp, kp, kd) -> None:
+    def __init__(self, udp: Any, kp: float, kd: float) -> None:
         print("RealRobotInit")
         self.q_curr = np.zeros(12)
         self.qdot_curr = np.zeros(12)
@@ -18,7 +20,7 @@ class RealRobotInit:
         self.jpos_cmd = np.zeros(12)
 
         self.curr_time = 0
-        self.motion_dur = 1500  # 5 seconds
+        self.motion_dur = 1500  # 5 seconds TODO: how?
 
         self.kp = kp
         self.kd = kd
@@ -29,7 +31,7 @@ class RealRobotInit:
             -0., 1.0, -1.5,  # RR
             0., 1.0, -1.5])  # RL
 
-        self.udp = udp
+        self.udp = udp  # TODO: type(udp)?
         self.lowcmd = sdk.LowCmd()
         self.udp.InitCmdData(self.lowcmd)
 
@@ -38,7 +40,7 @@ class RealRobotInit:
         self.flag = True
         # getch.getch()
 
-    def smooth_changing(self, idx) -> None:
+    def smooth_changing(self, idx: int) -> None:
         # print("smooth_changing idx = ", idx)
         # print("desired_config[idx] = ", self.desired_config[idx])
         # print("starting_config[idx] = ", self.starting_config[idx])
@@ -52,8 +54,8 @@ class RealRobotInit:
         # print("jpos_cmd[idx] = ", self.jpos_cmd[idx])
 
     def get_init_config(self) -> None:
-        for idx in range(500):
-            time.sleep(0.002)
+        for idx in range(int(1/CONTROL_STEP)):
+            time.sleep(CONTROL_STEP)
             lowstate = sdk.LowState()
             self.udp.Recv()
             self.udp.GetRecv(lowstate)
@@ -61,11 +63,11 @@ class RealRobotInit:
             self.starting_config = np.array([motor.q for motor in actuators])
         self.curr_time = 0
 
-    def set_desired_config(self, _config) -> None:
+    def set_desired_config(self, _config: np.ndarray) -> None:
         self.desired_config = _config
 
     def get_robot_config(self) -> None:
-        time.sleep(0.002)
+        time.sleep(CONTROL_STEP)
         lowstate = sdk.LowState()
         self.udp.Recv()
         self.udp.GetRecv(lowstate)
@@ -100,12 +102,12 @@ class RealRobotInit:
             self.udp.SetSend(self.lowcmd)
             self.udp.Send()
 
-            time.sleep(0.002)
+            time.sleep(CONTROL_STEP)
 
-    def hold_pose(self, hold_time_sec) -> None:
+    def hold_pose(self, hold_time_sec: float) -> None:
         pass
         # while self.curr_time <= ((hold_time_sec * 1000) + self.motion_dur):
         #     self.curr_time += 2
         #     self.interface.send_command(self.command)
         #     # print(self.curr_time)
-        #     threading.Event().wait(0.002)
+        #     threading.Event().wait(CONTROL_STEP)
