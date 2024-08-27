@@ -20,9 +20,10 @@ from .. import RealRobotInit
 
 # Constants
 
-H = 10  # observation history length
+H = 5  # observation history length
 CONTROL_STEP = 0.002  # 500 Hz ~ 0.002 sec
 POLICY_STEP = 0.02  # 50 Hz ~ 0.02 sec
+OBS_LEN = 46
 
 PosStopF = math.pow(10, 9)
 VelStopF = 16000.0
@@ -50,12 +51,13 @@ class Go1Env():
         self.vel_cmd = np.zeros(3, dtype=np.float32)
         self.a_cmd = np.zeros(12, dtype=np.float32)
         self.gravity = np.array([0, 0, -9.81])
+        self.gravity /= np.norm(self.gravity)  # normalized
 
         self.q = np.zeros(12, dtype=np.float32)
         self.dq = np.zeros(12, dtype=np.float32)
         self.projected_gravity = np.zeros(3, dtype=np.float32)
 
-        self.obs = np.zeros(42, dtype=np.float32)
+        self.obs = np.zeros(OBS_LEN, dtype=np.float32)
 
         self.estop = 0
 
@@ -74,7 +76,7 @@ class Go1Env():
 
         # PD Gains for robot
         # Kp=30, Kd=0.5, Ka=0.25
-        self.kp = 40
+        self.kp = 30
         self.kd = 0.5
         self.ka = 0.25
         # Robot Startup object
@@ -109,8 +111,15 @@ class Go1Env():
         c = q_vec * q_vec * gravity
         return a - b + c
 
-    def step(self, a_cmd: np.ndarray) -> tuple[np.ndarray, Any]:
+    def step(
+            self,
+            a_cmd: np.ndarray,
+            gait_mode: np.ndarray,
+            vel_cmd_override: np.ndarray = None,
+    ) -> tuple[np.ndarray, Any]:
         self.a_cmd = a_cmd
+        self.gait_mode = gait_mode
+        self.vel_cmd_override = vel_cmd_override
 
         step_time = time.time()
         while ((time.time() - step_time) < POLICY_STEP):
@@ -128,7 +137,8 @@ class Go1Env():
             self.vel_cmd,
             self.q,
             self.dq,
-            self.a_cmd
+            self.a_cmd,
+            self.gait_mode,
         ), axis=0).flatten()
         # print("obs.shape = ", self.obs.shape)
 
@@ -251,6 +261,8 @@ class Go1Env():
         # 15 is right stick forward/backwards (can get direction)
         # 14 is right stick forward/backwards (can maybe get intensity)
         # 21 is left strick diagonals but unclear mapping
+        if self.vel_cmd_override is not None:
+            self.vel_cmd = np.float32(self.vel_cmd_override.reshape((3,)))
 
     def run_robot(self) -> None:
         control_time = time.time()
@@ -280,7 +292,7 @@ class Go1Env():
         self.udp.SetSend(self.lowcmd)
         self.udp.Send()
 
-    def robot_to_policy_joint_reorder(self, inp):
+    def robot_to_policy_joint_reorder(self, inp) -> np.ndarray:
         policy_joint_order = np.zeros(12, dtype=np.float32)
         policy_joint_order[0] = inp[3]  # FL Hip
         policy_joint_order[1] = inp[0]  # FR Hip
@@ -297,7 +309,7 @@ class Go1Env():
 
         return policy_joint_order
 
-    def policy_to_robot_joint_reorder(self, inp):
+    def policy_to_robot_joint_reorder(self, inp) -> np.ndarray:
         robot_joint_order = np.zeros(12, dtype=np.float32)
         robot_joint_order[0] = inp[1]  # FR Hip
         robot_joint_order[1] = inp[5]  # FR Thigh
@@ -321,27 +333,47 @@ def flatten_for_policy(obs) -> np.ndarray[np.float32]:
     q = obs[6:18, :].reshape((1, -1))
     dq = obs[18:30, :].reshape((1, -1))
     last_action = obs[30:42, :].reshape((1, -1))
+    gait_mode = obs[42:46, :].reshape((1, -1))
     print("proj_g.shape = ", proj_g.shape)
     print("vel_cmd.shape = ", vel_cmd.shape)
     print("q.shape = ", q.shape)
     print("dq.shape = ", dq.shape)
     print("last_action.shape = ", last_action.shape)
-    obs_flat = np.concatenate((proj_g, vel_cmd, q, dq, last_action), axis=1)
+    print("gait_mode.shape = ", gait_mode.shape)
+    obs_flat = np.concatenate((proj_g, vel_cmd, q, dq, last_action, gait_mode), axis=1)
     print("obs_flat.shape = ", obs_flat.shape)
     print("obs_flat.flatten().shape = ", obs_flat.flatten().shape)
     return np.float32(obs_flat)
 
 
+def vel_cmd_generator():
+    commands = [
+        np.array([0, 0, 0], dtype=np.float32),  # stance
+        np.array([0.5, 0, 0], dtype=np.float32),  # forward
+        np.array([-0.5, 0, 0], dtype=np.float32),  # backward
+        np.array([0, 0.5, 0], dtype=np.float32),  # left
+        np.array([0, -0.5, 0], dtype=np.float32),  # right
+        np.array([0, 0, 0.5], dtype=np.float32),  # ccw
+        np.array([0, 0, -0.5], dtype=np.float32),  # cw
+        np.array([0, 0, 0], dtype=np.float32),  # stance
+    ]
+    for command in commands:
+        yield command
+    return "Test Commands Finished: Done."
+
+
 def main() -> None:
 
     # Load onnx policy
-    ort_session = ort.InferenceSession("../models/model_94000.onnx")
+    # ort_session = ort.InferenceSession("../models/model_94000.onnx")
+    ort_session = ort.InferenceSession("../onnx_models/hist5_trot_model_25000.onnx")
 
     env = Go1Env()
 
-    obs_history = np.zeros((42, H), dtype=np.float32)
+    obs_history = np.zeros((OBS_LEN, H), dtype=np.float32)
 
     a_cmd = np.zeros(12, dtype=np.float32)
+    gait_mode = np.array([1, 0, 0, 0], dtype=np.float32)
 
     save_logs = []
     now = datetime.datetime.now()
@@ -349,8 +381,8 @@ def main() -> None:
     current_time = time.time()
 
     # stand for 5 second before activating the policy
-    for _ in range(250):
-        obs, lowstate = env.step(a_cmd)
+    for _ in range(5 * int(1 / POLICY_STEP)):
+        obs, lowstate = env.step(a_cmd, gait_mode)
         ddq = np.array([motor.ddq for motor in lowstate.motorState[:12]])
         tauEst = np.array([motor.tauEst for motor in lowstate.motorState[:12]])
         save_logs.append({
@@ -362,6 +394,7 @@ def main() -> None:
             "projected_gravity": obs[0:3],
             "vel_cmd": obs[3:6],
             "a_cmd": obs[30:42],
+            "gait_mode": obs[42:46],
             "wirelessRemote": lowstate.wirelessRemote[:],
             "footforce": lowstate.footForce[:],
             "footforceEst": lowstate.footForceEst[:],
@@ -373,11 +406,19 @@ def main() -> None:
 
     print("Policy Start...")
 
+    vel_cmd = np.array([0, 0, 0], dtype=np.float32)
+    counter = 0
     while not env.estop:
+        if counter % (5 * int(1 / POLICY_STEP)) == 0:
+            vel_cmd = vel_cmd_generator()
+        if isinstance(vel_cmd, str):
+            print(vel_cmd)
+            break
+        counter += 1
 
         # obs = np.concatenate(q, dq, projected_gravity, vel_cmd, a_cmd)
         # lowstate = unitree_legged_sdk::LowState
-        obs, lowstate = env.step(a_cmd)
+        obs, lowstate = env.step(a_cmd, gait_mode, vel_cmd_override=vel_cmd)
         obs = np.expand_dims(obs, axis=1)
 
         current_time = time.time()
@@ -412,6 +453,7 @@ def main() -> None:
             "projected_gravity": obs[0:3],
             "vel_cmd": obs[3:6],
             "last_a_cmd": obs[30:42],
+            "gait_mode": obs[42:46],
             "wirelessRemote": lowstate.wirelessRemote[:],
             "footforce": lowstate.footForce[:],
             "footforceEst": lowstate.footForceEst[:],
