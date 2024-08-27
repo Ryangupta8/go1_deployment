@@ -133,25 +133,10 @@ class Go1Env():
         # print("obs.shape = ", self.obs.shape)
 
         # TODO: find type(self.lowstate)
-        return self.obs, self.lowstate
+        return self.obs, self.lowstate   
 
-    def get_obs(self) -> None:
-        self.udp.Recv()
-        self.udp.GetRecv(self.lowstate)
-        actuators = self.lowstate.motorState[:12]
-        # Joint pos
-        q = np.array([motor.q for motor in actuators])
-        # print("q = ", q)
-        self.q = q - self.q_stand  # q is relative to stance config
-        self.q = self.robot_to_policy_joint_reorder(self.q)
-        # Joint vel
-        self.dq = np.array([motor.dq for motor in actuators])
-        self.dq = self.robot_to_policy_joint_reorder(self.dq)
-        # Body quaternion, normalized, (w,x,y,z)
-        quat = np.array([self.lowstate.imu.quaternion])
-        self.projected_gravity = self.quat_rot_inv(quat, self.gravity)
-
-        wirelessRemote = self.lowstate.wirelessRemote
+    def get_vel_cmd_from_controller(self, wirelessRemote) -> np.ndarray:
+        vel_cmd = np.zeros(3, dtype=np.float32)
         # Left Stick forward/backward == vx command
         # 23 is left stick forward/backwards
         #   (can get direction 58-63 / 186-191)
@@ -169,16 +154,16 @@ class Go1Env():
             elif wirelessRemote[23] == 63:
                 intensity = float((wirelessRemote[22] + 256.)) / 384.
             # print(intensity)
-            self.vel_cmd[0] = intensity
+            vel_cmd[0] = intensity
         # if left stick being pressed backward
         elif (187 <= wirelessRemote[23] <= 191):
             if wirelessRemote[23] != 191:
                 intensity = float(wirelessRemote[22]) / 384.
             elif wirelessRemote[23] == 191:
                 intensity = float((wirelessRemote[22] + 256.)) / 384.
-            self.vel_cmd[0] = -intensity
+            vel_cmd[0] = -intensity
         else:
-            self.vel_cmd[0] = 0.0
+            vel_cmd[0] = 0.0
 
         # Left Stick left/right == vy command
         # 7 is left stick left/right
@@ -198,16 +183,16 @@ class Go1Env():
                 intensity = float(wirelessRemote[6] / 384)
             elif wirelessRemote[7] == 63:
                 intensity = float((wirelessRemote[6] + 256) / 384)
-            self.vel_cmd[1] = -intensity
+            vel_cmd[1] = -intensity
         # if left stick being pushed left
         elif (188 <= wirelessRemote[7] <= 191):
             if wirelessRemote[7] != 191:
                 intensity = float(wirelessRemote[6] / 384)
             elif wirelessRemote[7] == 191:
                 intensity = float((wirelessRemote[6] + 256) / 384)
-            self.vel_cmd[1] = intensity
+            vel_cmd[1] = intensity
         else:
-            self.vel_cmd[1] = 0.0
+            vel_cmd[1] = 0.0
 
         # Right Stick left/right == yaw rate command
         # 11 is right stick left/right
@@ -221,21 +206,42 @@ class Go1Env():
                 intensity = float(wirelessRemote[10] / 384)
             elif wirelessRemote[11] == 63:
                 intensity = float((wirelessRemote[10] + 256) / 384)
-            self.vel_cmd[2] = -intensity
+            vel_cmd[2] = -intensity
         # if right stick beign pushed left
         elif (188 <= wirelessRemote[11] <= 191):
             if wirelessRemote[11] != 191:
                 intensity = float(wirelessRemote[10] / 384)
             elif wirelessRemote[11] == 191:
                 intensity = float((wirelessRemote[10] + 256) / 384)
-            self.vel_cmd[2] = intensity
+            vel_cmd[2] = intensity
         else:
-            self.vel_cmd[2] = 0.0
+            vel_cmd[2] = 0.0
+        return vel_cmd
 
+    def get_obs(self) -> None:
+        self.udp.Recv()
+        self.udp.GetRecv(self.lowstate)
+        actuators = self.lowstate.motorState[:12]
+        # Joint pos
+        q = np.array([motor.q for motor in actuators])
+        # print("q = ", q)
+        self.q = q - self.q_stand  # q is relative to stance config
+        self.q = self.robot_to_policy_joint_reorder(self.q)
+        # Joint vel
+        self.dq = np.array([motor.dq for motor in actuators])
+        self.dq = self.robot_to_policy_joint_reorder(self.dq)
+        # Body quaternion, normalized, (w,x,y,z)
+        quat = np.array([self.lowstate.imu.quaternion])
+        self.projected_gravity = self.quat_rot_inv(quat, self.gravity)
+
+        wirelessRemote = self.lowstate.wirelessRemote
         if self.vel_cmd_override is not None:
+            print("Velocity Command from Generator:")
             self.vel_cmd = np.float32(self.vel_cmd_override.reshape((3,)))
-
-        print("velocity command = ", self.vel_cmd)
+        else:
+            print("Velocity Command from Controller:")
+            self.vel_cmd = self.get_vel_cmd_from_controller(wirelessRemote)
+        print(self.vel_cmd)
 
         # print("wirelessRemote = ", wirelessRemote[2])
         if wirelessRemote[2] == 16:
@@ -412,6 +418,7 @@ def main() -> None:
     vel_cmd_gen = vel_cmd_generator()
     vel_cmd = next(vel_cmd_gen)
     counter = 1
+    now = time.time()
     while not env.estop:
         if counter % (5 * int(1 / POLICY_STEP)) == 0:
             vel_cmd = next(vel_cmd_gen)
@@ -424,6 +431,8 @@ def main() -> None:
         # obs = np.concatenate(q, dq, projected_gravity, vel_cmd, a_cmd)
         # lowstate = unitree_legged_sdk::LowState
         obs, lowstate = env.step(a_cmd, gait_mode, vel_cmd_override=vel_cmd)
+        print("dt: ", time.time() - now)
+        now = time.time()
         obs = np.expand_dims(obs, axis=1)
 
         current_time = time.time()
