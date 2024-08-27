@@ -468,7 +468,7 @@ def main() -> None:
             "rpy": lowstate.imu.rpy[:]
         })
 
-        with open('{date}.pickle'.format(date=date), 'wb') as handle:
+        with open('logs/{date}.pickle'.format(date=date), 'wb') as handle:
             pickle.dump(save_logs, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 
