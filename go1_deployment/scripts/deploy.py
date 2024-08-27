@@ -1,7 +1,6 @@
 #!/usr/bin/python3
 
 import time
-import sys
 import math
 import getch
 import numpy as np
@@ -10,21 +9,10 @@ import datetime
 import onnxruntime as ort
 from typing import Any
 
-# TODO: make this a proper python module so we dont need this
-# sys.path.append("../third_party/unitree_legged_sdk/lib/python/amd64")
-# sys.path.append("../src")
-# sys.path.append("../models")
 
 # import robot_interface as sdk
 from go1_deployment import RealRobotInit, H, CONTROL_STEP, POLICY_STEP, OBS_LEN
 from go1_deployment import robot_interface as sdk
-
-# Constants
-
-# H = 5  # observation history length
-# CONTROL_STEP = 0.002  # 500 Hz ~ 0.002 sec
-# POLICY_STEP = 0.02  # 50 Hz ~ 0.02 sec
-# OBS_LEN = 46
 
 PosStopF = math.pow(10, 9)
 VelStopF = 16000.0
@@ -48,7 +36,7 @@ class Go1Env():
             0.1, 0.8, -1.5,
             -0.1, 1.0, -1.5,
             0.1, 1.0, -1.5,
-        ])
+        ])  # robot joint order
         self.vel_cmd = np.zeros(3, dtype=np.float32)
         self.a_cmd = np.zeros(12, dtype=np.float32)
         self.gravity = np.array([0, 0, -9.81])
@@ -244,7 +232,10 @@ class Go1Env():
         else:
             self.vel_cmd[2] = 0.0
 
-        # print("velocity command = ", self.vel_cmd)
+        if self.vel_cmd_override is not None:
+            self.vel_cmd = np.float32(self.vel_cmd_override.reshape((3,)))
+
+        print("velocity command = ", self.vel_cmd)
 
         # print("wirelessRemote = ", wirelessRemote[2])
         if wirelessRemote[2] == 16:
@@ -263,8 +254,6 @@ class Go1Env():
         # 15 is right stick forward/backwards (can get direction)
         # 14 is right stick forward/backwards (can maybe get intensity)
         # 21 is left strick diagonals but unclear mapping
-        if self.vel_cmd_override is not None:
-            self.vel_cmd = np.float32(self.vel_cmd_override.reshape((3,)))
 
     def run_robot(self) -> None:
         control_time = time.time()
