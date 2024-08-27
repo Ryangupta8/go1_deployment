@@ -406,7 +406,7 @@ def main() -> None:
 
     print("Policy Start...")
 
-    vel_cmd = np.array([0, 0, 0], dtype=np.float32)
+    vel_cmd = vel_cmd_generator()
     counter = 0
     while not env.estop:
         if counter % (5 * int(1 / POLICY_STEP)) == 0:
