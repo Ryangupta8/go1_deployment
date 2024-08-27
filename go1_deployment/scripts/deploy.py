@@ -119,8 +119,8 @@ class Go1Env():
         # print("q.shape = ", self.q.shape)
         # print("dq.shape = ", self.dq.shape)
         # print("a_cmd.shape = ", self.a_cmd.shape)
-        print("vel_cmd: ", self.vel_cmd)
-        print("vel_cmd_override: ", self.vel_cmd_override)
+        # print("vel_cmd: ", self.vel_cmd)
+        # print("vel_cmd_override: ", self.vel_cmd_override)
         # Update self.obs and send back to policy
         self.obs = np.concatenate((
             self.projected_gravity,
@@ -236,12 +236,12 @@ class Go1Env():
 
         wirelessRemote = self.lowstate.wirelessRemote
         if self.vel_cmd_override is not None:
-            print("Velocity Command from Generator:")
+            # print("Velocity Command from Generator:")
             self.vel_cmd = np.float32(self.vel_cmd_override.reshape((3,)))
         else:
-            print("Velocity Command from Controller:")
+            # print("Velocity Command from Controller:")
             self.vel_cmd = self.get_vel_cmd_from_controller(wirelessRemote)
-        print(self.vel_cmd)
+        # print(self.vel_cmd)
 
         # print("wirelessRemote = ", wirelessRemote[2])
         if wirelessRemote[2] == 16:
@@ -452,8 +452,7 @@ def main() -> None:
         obs_flat = flatten_for_policy(obs_history)
 
         # Call policy; update a_cmd
-        a_cmd = ort_session.run(None, {"obs": obs_flat})[0].flatten()
-
+        a_cmd = ort_session.run(None, {"obs": obs_flat})[0].flatten()  # 5000 Hz
         ddq = np.array([motor.ddq for motor in lowstate.motorState[:12]])
         tauEst = np.array([motor.tauEst for motor in lowstate.motorState[:12]])
         # TODO: pick convention, either unitree or isaac for all logs
