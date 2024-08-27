@@ -407,7 +407,7 @@ def main() -> None:
     print("Policy Start...")
 
     vel_cmd = vel_cmd_generator()
-    counter = 0
+    counter = 1
     while not env.estop:
         if counter % (5 * int(1 / POLICY_STEP)) == 0:
             vel_cmd = vel_cmd_generator()
