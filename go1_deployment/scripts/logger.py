@@ -83,6 +83,14 @@ class Logger:
             "RR_calf_joint": [],
             "RL_calf_joint": [],
         }
+        self.estimate = {
+            "vx": [],
+            "vy": [],
+            "vz": [],
+            "avx": [],
+            "avy": [],
+            "avz": [],
+        }
 
         # Plotters
         subplot_kw_args = {
@@ -101,6 +109,8 @@ class Logger:
         self.fig_action, self.ax_action = plt.subplots(3, 1, **subplot_kw_args)
         # Torque
         self.fig_torque, self.ax_torque = plt.subplots(3, 1, **subplot_kw_args)
+        # Estimate
+        self.fig_estimate, self.ax_estimate = plt.subplots(2, 1, **subplot_kw_args)
 
     def log(
             self,
@@ -112,6 +122,7 @@ class Logger:
             action: dict,
             q_offset: dict,
             torque: dict,
+            estimate: list,
     ) -> None:
         # Time
         if self.init_time is None:
@@ -137,6 +148,13 @@ class Logger:
         # Torque
         for k, v in torque.items():
             self.torque[k].append(v)
+        # Estimate
+        self.estimate["vx"].append(estimate[0])
+        self.estimate["vy"].append(estimate[1])
+        self.estimate["vz"].append(estimate[2])
+        self.estimate["avx"].append(estimate[3])
+        self.estimate["avy"].append(estimate[4])
+        self.estimate["avz"].append(estimate[5])
 
     def plot(self) -> None:
         # Projected Gravity
@@ -209,6 +227,18 @@ class Logger:
         self.ax_torque[0].set_title("Applied Torque")
         self.ax_torque[1].set_ylabel("Torque [Nm]")
         self.ax_torque[2].set_xlabel("Time [s]")
+        # Estimate
+        for k, v in self.estimate.items():
+            if "a" in k:
+                self.ax_estimate[1].plot(self.t, v, label=k)
+            else:
+                self.ax_estimate[0].plot(self.t, v, label=k)
+        self.ax_estimate[0].set_title("Velocity Estimates")
+        self.ax_estimate[0].legend(loc="upper left")
+        self.ax_estimate[1].legend(loc="upper left")
+        self.ax_estimate[0].set_ylabel("Velocity [m/s]")
+        self.ax_estimate[1].set_ylabel("Velocity [rad/s]")
+        self.ax_estimate[1].set_xlabel("Time [s]")
         plt.show()
 
 
@@ -242,10 +272,10 @@ def read_pickled_data(
             "RR_calf_joint": -1.5,
             "RL_calf_joint": -1.5,
         }
-        print(proj_g)
         torque = {
             k: Kp * (q_offset[k] + Ka * action[k] - q[k]) + Kd * dq[k] for k in q_offset.keys()
         }
+        estimate = obs["estimates"].flatten().tolist()
         logger.log(
             t,
             proj_g,
@@ -254,7 +284,8 @@ def read_pickled_data(
             dq,
             action,
             q_offset,
-            torque
+            torque,
+            estimate,
         )
     logger.plot()
 

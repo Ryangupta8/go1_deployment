@@ -381,7 +381,12 @@ def main() -> None:
 
     obs_history = np.zeros((OBS_LEN, H), dtype=np.float32)
 
-    a_cmd = np.zeros(12, dtype=np.float32)
+    # get shapes
+    obs_flat = flatten_for_policy(obs_history)
+    output = ort_session.run(None, {"obs": obs_flat})
+    a_cmd = np.zeros(output[0].flatten().shape, dtype=np.float32)
+    estimates = np.zeros(output[1].flatten().shape, dtype=np.float32)
+
     gait_mode = np.array([1, 0, 0, 0], dtype=np.float32)
 
     save_logs = []
@@ -404,6 +409,7 @@ def main() -> None:
             "vel_cmd": obs[3:6],
             "a_cmd": obs[30:42],
             "gait_mode": obs[42:46],
+            "estimates": estimates,
             "wirelessRemote": lowstate.wirelessRemote[:],
             "footforce": lowstate.footForce[:],
             "footforceEst": lowstate.footForceEst[:],
@@ -452,7 +458,9 @@ def main() -> None:
         obs_flat = flatten_for_policy(obs_history)
 
         # Call policy; update a_cmd
-        a_cmd = ort_session.run(None, {"obs": obs_flat})[0].flatten()  # 5000 Hz
+        output = ort_session.run(None, {"obs": obs_flat})  # 5000 Hz
+        a_cmd = output[0].flatten()
+        estimates = output[1].flatten()
         ddq = np.array([motor.ddq for motor in lowstate.motorState[:12]])
         tauEst = np.array([motor.tauEst for motor in lowstate.motorState[:12]])
         # TODO: pick convention, either unitree or isaac for all logs
@@ -467,6 +475,7 @@ def main() -> None:
             "vel_cmd": obs[3:6],
             "last_a_cmd": obs[30:42],
             "gait_mode": obs[42:46],
+            "estimates": estimates,
             "wirelessRemote": lowstate.wirelessRemote[:],
             "footforce": lowstate.footForce[:],
             "footforceEst": lowstate.footForceEst[:],
