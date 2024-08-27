@@ -1,3 +1,3 @@
 tags
-third_party/unitree_legged_sdk-3.5.1/build
+go1_deployment/third_party/unitree_legged_sdk-3.5.1/build
 *.vscode/
