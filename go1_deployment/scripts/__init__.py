@@ -4,7 +4,7 @@ from utils import (
     quat_rot_inv, flatten_for_policy,
     robot_to_policy_joint_reorder, policy_to_robot_joint_reorder,
 )
-from control_loop import Go1Env
+# from control_loop import Go1Env
 
 __all__ = [
     "CONTROL_STEP",

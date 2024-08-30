@@ -8,12 +8,16 @@ from typing import Any
 
 
 # import robot_interface as sdk
+"""
 from go1_deployment import (
     # RealRobotInit,
-    H, CONTROL_STEP, POLICY_STEP, OBS_LEN,
+    # H, CONTROL_STEP, POLICY_STEP, OBS_LEN,
     quat_rot_inv,
     robot_to_policy_joint_reorder, policy_to_robot_joint_reorder
 )
+"""
+from constants import H, CONTROL_STEP, POLICY_STEP, OBS_LEN
+from utils import quat_rot_inv, robot_to_policy_joint_reorder, policy_to_robot_joint_reorder
 from go1_deployment import robot_interface as sdk
 
 PosStopF = math.pow(10, 9)

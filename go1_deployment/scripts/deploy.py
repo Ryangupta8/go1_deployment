@@ -7,10 +7,15 @@ import datetime
 import onnxruntime as ort
 
 # import robot_interface as sdk
+"""
 from go1_deployment import (
-    H, POLICY_STEP, OBS_LEN,
-    Go1Env, flatten_for_policy,
-)
+    # H, POLICY_STEP, OBS_LEN,
+    # flatten_for_policy,
+    # Go1Env
+"""
+from constants import H, POLICY_STEP, OBS_LEN
+from control_loop import Go1Env
+from utils import flatten_for_policy
 
 
 def vel_cmd_generator():
