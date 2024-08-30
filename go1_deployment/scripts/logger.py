@@ -257,7 +257,7 @@ def read_pickled_data(
         vel_cmd = obs["vel_cmd"].flatten().tolist()
         q = list_to_dict(obs["q"].flatten().tolist())
         dq = list_to_dict(obs["dq"].flatten().tolist())
-        action = list_to_dict(obs["a_cmd"].flatten().tolist())
+        action = list_to_dict(obs["action"].flatten().tolist())
         q_offset = {
             "FR_hip_joint": -0.1,
             "FL_hip_joint": 0.1,
@@ -316,9 +316,3 @@ def cast_to_float(data: Any) -> float:
     while isinstance(data, list):
         data = data[0]
     return float(data)
-
-
-def flatten_list(data: list) -> list:
-    if len(data) == 1:
-        data = data[0]
-    return data
