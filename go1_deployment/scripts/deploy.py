@@ -31,7 +31,6 @@ def vel_cmd_generator():
     ]
     for command in commands:
         yield command
-    return "Test Commands Finished: Done."
 
 
 class Runner():
@@ -107,7 +106,6 @@ class Runner():
                     self.vel_cmd = next(self.vel_cmd_gen)
                     print("New Command: {}".format(self.vel_cmd))
                 except StopIteration:
-                    print(self.vel_cmd)
                     self.env.trigger_estop()
                     break
             counter += 1
