@@ -46,7 +46,7 @@ def robot_to_policy_joint_reorder(robot_joint_order: np.ndarray) -> np.ndarray:
     return policy_joint_order
 
 
-def policy_to_robot_joint_reorder(self, policy_joint_order) -> np.ndarray:
+def policy_to_robot_joint_reorder(policy_joint_order) -> np.ndarray:
     robot_joint_order = np.zeros(12, dtype=np.float32)
     robot_joint_order[0] = policy_joint_order[1]  # FR Hip
     robot_joint_order[1] = policy_joint_order[5]  # FR Thigh
