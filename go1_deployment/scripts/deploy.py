@@ -103,11 +103,12 @@ class Runner():
         while not self.env.is_stopped:
             # Get Velocity Command
             if counter % (5 * int(1 / POLICY_STEP)) == 0:
-                self.vel_cmd = next(self.vel_cmd_gen)
-                print("New Command: {}".format(self.vel_cmd))
-            if isinstance(self.vel_cmd, str):
-                print(self.vel_cmd)
-                break
+                try:
+                    self.vel_cmd = next(self.vel_cmd_gen)
+                    print("New Command: {}".format(self.vel_cmd))
+                except StopIteration:
+                    print(self.vel_cmd)
+                    self.env.trigger_estop()
             counter += 1
 
             # Actuate Robot
@@ -135,7 +136,7 @@ class Runner():
             # Print Analytics
             print("Step {}:".format(counter))
             print("Loop: {} Hz".format(
-                1 / (time_post_policy - time_pre_policy + 1e-8)
+                1 / (time_pre_policy - time_post_policy + 1e-8)
             ))
             time_post_policy = time.time()
             print("Policy: {} Hz".format(

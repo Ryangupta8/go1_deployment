@@ -186,6 +186,7 @@ class Go1Env():
         self.udp.Send()
 
     def trigger_estop(self) -> None:
+        self.estop = 1
         for motor_id in range(12):
             self.lowcmd.motorCmd[motor_id].Kp = 0
             self.lowcmd.motorCmd[motor_id].Kd = 0
