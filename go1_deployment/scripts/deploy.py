@@ -103,10 +103,10 @@ class Runner():
         while not self.env.is_stopped:
             # Get Velocity Command
             if counter % (5 * int(1 / POLICY_STEP)) == 0:
-                vel_cmd = next(self.vel_cmd_gen)
-                print("New Command: {}".format(vel_cmd))
-            if isinstance(vel_cmd, str):
-                print(vel_cmd)
+                self.vel_cmd = next(self.vel_cmd_gen)
+                print("New Command: {}".format(self.vel_cmd))
+            if isinstance(self.vel_cmd, str):
+                print(self.vel_cmd)
                 break
             counter += 1
 
