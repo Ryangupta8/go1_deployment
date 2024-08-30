@@ -321,10 +321,10 @@ class RealRobotInit:
         self.kd = kd
 
         self.desired_config = np.array([
-            -0., 0.8, -1.5,  # FR
-            0., 0.8, -1.5,  # FL
-            -0., 1.0, -1.5,  # RR
-            0., 1.0, -1.5])  # RL
+            -0.1, 0.8, -1.5,  # FR
+            0.1, 0.8, -1.5,  # FL
+            -0.1, 1.0, -1.5,  # RR
+            0.1, 1.0, -1.5])  # RL
 
         self.udp = udp  # TODO: type(udp)?
         self.lowcmd = sdk.LowCmd()
