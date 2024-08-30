@@ -165,7 +165,7 @@ class Go1Env():
         for motor_id in range(12):
             q_default = self.robot_q_stand[motor_id]
             q_act = self.stance_trigger * self.ka * robot_action[motor_id]
-            self.lowcmd.motorCmd[motor_id].q = q_default[motor_id]
+            self.lowcmd.motorCmd[motor_id].q = q_default
             self.lowcmd.motorCmd[motor_id].Kp = self.kp
             self.lowcmd.motorCmd[motor_id].dq = 0
             self.lowcmd.motorCmd[motor_id].Kd = self.kd
