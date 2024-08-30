@@ -109,6 +109,7 @@ class Runner():
                 except StopIteration:
                     print(self.vel_cmd)
                     self.env.trigger_estop()
+                    break
             counter += 1
 
             # Actuate Robot
