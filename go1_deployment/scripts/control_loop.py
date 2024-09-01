@@ -1,8 +1,8 @@
 #!/usr/bin/python3
 
-import time
+# import time
 import math
-import getch
+# import getch
 import numpy as np
 from typing import Any
 
@@ -16,8 +16,12 @@ from go1_deployment import (
     robot_to_policy_joint_reorder, policy_to_robot_joint_reorder
 )
 """
-from constants import H, CONTROL_STEP, POLICY_STEP, OBS_LEN
-from utils import quat_rot_inv, robot_to_policy_joint_reorder, policy_to_robot_joint_reorder
+# from constants import CONTROL_STEP
+from utils import (
+    quat_rot_inv,
+    robot_to_policy_joint_reorder,
+    policy_to_robot_joint_reorder
+)
 from go1_deployment import robot_interface as sdk
 
 PosStopF = math.pow(10, 9)
@@ -50,6 +54,7 @@ class Go1Env():
             -0.1, 1.0, -1.5,
             0.1, 1.0, -1.5,
         ])
+        self.policy_q_stand = robot_to_policy_joint_reorder(self.robot_q_stand)
         self.gravity = np.array([0, 0, -9.81])
         self.gravity /= np.linalg.norm(self.gravity)  # normalized
         self.kp = 30
@@ -75,8 +80,8 @@ class Go1Env():
         # self.udp.SetSend(self.lowcmd)
         # self.udp.Send()
 
+        """
         # Robot Startup Object
-        # TODO: streamline this
         self.robot_init = RealRobotInit(self.udp, self.kp, self.kd)
 
         # # Safety Confirmation
@@ -93,6 +98,7 @@ class Go1Env():
         # Make Robot Stand
         self.robot_init.init_motion()
         print("=== Robot Start ===")
+        """
 
     def step(
             self,
@@ -114,7 +120,8 @@ class Go1Env():
         self.udp.Recv()
         self.udp.GetRecv(self.lowstate)
         wirelessRemote = self.lowstate.wirelessRemote
-        self.estop, self.stance_trigger = self.get_modifiers_from_controller(wirelessRemote)
+        modifiers = self.get_modifiers_from_controller(wirelessRemote)
+        self.estop, self.stance_trigger = modifiers
         if self.estop:
             self.trigger_estop()
         # Normalized Body Quaternion [w,x,y,z]
@@ -304,7 +311,7 @@ class Go1Env():
         return estop, stance_trigger
 
 
-class RealRobotInit:
+"""class RealRobotInit:
     def __init__(self, udp: Any, kp: float, kd: float) -> None:
         print("RealRobotInit")
         self.q_curr = np.zeros(12)
@@ -406,3 +413,4 @@ class RealRobotInit:
         #     self.interface.send_command(self.command)
         #     # print(self.curr_time)
         #     threading.Event().wait(CONTROL_STEP)
+"""

@@ -39,6 +39,21 @@ class Logger:
             "RR_calf_joint": [],
             "RL_calf_joint": [],
         }
+        # Default Joint Position
+        self.q_des = {
+            "FR_hip_joint": -0.1,
+            "FL_hip_joint": 0.1,
+            "RR_hip_joint": -0.1,
+            "RL_hip_joint": 0.1,
+            "FR_thigh_joint": 0.8,
+            "FL_thigh_joint": 0.8,
+            "RR_thigh_joint": 1.0,
+            "RL_thigh_joint": 1.0,
+            "FR_calf_joint": -1.5,
+            "FL_calf_joint": -1.5,
+            "RR_calf_joint": -1.5,
+            "RL_calf_joint": -1.5,
+        }
         # Joint Velocity
         self.dq = {
             "FR_hip_joint": [],
@@ -69,7 +84,21 @@ class Logger:
             "RR_calf_joint": [],
             "RL_calf_joint": [],
         }
-        self.torque = {
+        self.torque_des = {
+            "FR_hip_joint": [],
+            "FL_hip_joint": [],
+            "RR_hip_joint": [],
+            "RL_hip_joint": [],
+            "FR_thigh_joint": [],
+            "FL_thigh_joint": [],
+            "RR_thigh_joint": [],
+            "RL_thigh_joint": [],
+            "FR_calf_joint": [],
+            "FL_calf_joint": [],
+            "RR_calf_joint": [],
+            "RL_calf_joint": [],
+        }
+        self.torque_applied = {
             "FR_hip_joint": [],
             "FL_hip_joint": [],
             "RR_hip_joint": [],
@@ -121,7 +150,8 @@ class Logger:
             dq: dict,
             action: dict,
             q_offset: dict,
-            torque: dict,
+            torque_des: dict,
+            torque_applied: dict,
             estimate: list,
     ) -> None:
         # Time
@@ -146,8 +176,10 @@ class Logger:
         for k, v in action.items():
             self.action[k].append(self.Ka * v)
         # Torque
-        for k, v in torque.items():
-            self.torque[k].append(v)
+        for k, v in torque_des.items():
+            self.torque_des[k].append(v)
+        for k, v in torque_applied.items():
+            self.torque_applied[k].append(v)
         # Estimate
         self.estimate["vx"].append(estimate[0])
         self.estimate["vy"].append(estimate[1])
@@ -157,6 +189,12 @@ class Logger:
         self.estimate["avz"].append(estimate[5])
 
     def plot(self) -> None:
+        styles = {
+            "FR": "tab:blue",
+            "FL": "tab:orange",
+            "RR": "tab:green",
+            "RL": "tab:red",
+        }
         # Projected Gravity
         for k, v in self.proj_g.items():
             self.ax_proj_g.plot(self.t, v, label=k)
@@ -173,14 +211,19 @@ class Logger:
         self.ax_vel_cmd.set_xlabel("Time [s]")
         # Joint Position
         for k, v in self.q.items():
+            c = styles[k.split("_")[0]]
+            q_desired = np.array(self.action[k]) + self.q_des[k]
             if "hip" in k:
                 self.ax_q[0].plot(self.t, v, label=k.split("_joint")[0])
+                self.ax_q[0].plot(self.t, q_desired, c=c, ls="--")
                 self.ax_q[0].legend(loc="upper left")
             elif "thigh" in k:
                 self.ax_q[1].plot(self.t, v, label=k.split("_joint")[0])
+                self.ax_q[1].plot(self.t, q_desired, c=c, ls="--")
                 self.ax_q[1].legend(loc="upper left")
             elif "calf" in k:
                 self.ax_q[2].plot(self.t, v, label=k.split("_joint")[0])
+                self.ax_q[2].plot(self.t, q_desired, c=c, ls="--")
                 self.ax_q[2].legend(loc="upper left")
         self.ax_q[0].set_title("Joint Position")
         self.ax_q[1].set_ylabel("Angle [rad]")
@@ -214,15 +257,19 @@ class Logger:
         self.ax_action[1].set_ylabel("Angle Offset [rad]")
         self.ax_action[2].set_xlabel("Time [s]")
         # Torque
-        for k, v in self.torque.items():
+        for k, v in self.torque_applied.items():
+            c = styles[k.split("_")[0]]
             if "hip" in k:
                 self.ax_torque[0].plot(self.t, v, label=k.split("_joint")[0])
+                self.ax_torque[0].plot(self.t, self.torque_des[k], c, ls="--")
                 self.ax_torque[0].legend(loc="upper left")
             elif "thigh" in k:
                 self.ax_torque[1].plot(self.t, v, label=k.split("_joint")[0])
+                self.ax_torque[1].plot(self.t, self.torque_des[k], c, ls="--")
                 self.ax_torque[1].legend(loc="upper left")
             elif "calf" in k:
                 self.ax_torque[2].plot(self.t, v, label=k.split("_joint")[0])
+                self.ax_torque[2].plot(self.t, self.torque_des[k], c, ls="--")
                 self.ax_torque[2].legend(loc="upper left")
         self.ax_torque[0].set_title("Applied Torque")
         self.ax_torque[1].set_ylabel("Torque [Nm]")
@@ -272,9 +319,10 @@ def read_pickled_data(
             "RR_calf_joint": -1.5,
             "RL_calf_joint": -1.5,
         }
-        torque = {
+        torque_des = {
             k: Kp * (q_offset[k] + Ka * action[k] - q[k]) + Kd * dq[k] for k in q_offset.keys()
         }
+        torque_applied = list_to_dict(obs["tauEst"].tolist())
         estimate = obs["estimates"].flatten().tolist()
         logger.log(
             t,
@@ -284,7 +332,8 @@ def read_pickled_data(
             dq,
             action,
             q_offset,
-            torque,
+            torque_des,
+            torque_applied,
             estimate,
         )
     logger.plot()
