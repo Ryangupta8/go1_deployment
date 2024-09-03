@@ -1,7 +1,8 @@
-import os 
-dir_path = os.path.dirname(os.path.realpath(__file__))
+import os
 import sys
-sys.path.append("{}/unitree_legged_sdk/lib/python/amd64".format(dir_path))
+
+unitree_dir_path = os.path.dirname(os.path.realpath(__file__))
+sys.path.append(f"{unitree_dir_path}/unitree_legged_sdk/lib/python/amd64")
 
 import robot_interface
 

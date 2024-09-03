@@ -7,16 +7,11 @@ import datetime
 import onnxruntime as ort
 from typing import Generator
 
-# import robot_interface as sdk
-"""
-from go1_deployment import (
-    # H, POLICY_STEP, OBS_LEN,
-    # flatten_for_policy,
-    # Go1Env
-"""
 from constants import H, POLICY_STEP, OBS_LEN
 from control_loop import Go1Env
 from utils import flatten_for_policy, robot_to_policy_joint_reorder
+
+from go1_deployment import DIR_PATH
 
 
 def vel_cmd_generator() -> Generator[np.ndarray]:
@@ -246,6 +241,6 @@ class Runner():
 
     def save_logs(self) -> None:
         print("=== Saving Logs ===")
-        with open("logs/{date}.pickle".format(date=self.date), "wb") as handle:
+        with open(f"{DIR_PATH}/logs/{self.date}.pickle", "wb") as handle:
             pickle.dump(self.logs, handle, protocol=pickle.HIGHEST_PROTOCOL)
         print("=== Done ===")

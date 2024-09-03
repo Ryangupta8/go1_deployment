@@ -1,7 +1,8 @@
 import matplotlib.pyplot as plt
-import pickle
-from typing import Any
 import numpy as np
+import pickle
+
+from utils import list_to_dict
 
 
 class Logger:
@@ -139,7 +140,7 @@ class Logger:
         # Torque
         self.fig_torque, self.ax_torque = plt.subplots(3, 1, **subplot_kw_args)
         # Estimate
-        self.fig_estimate, self.ax_estimate = plt.subplots(2, 1, **subplot_kw_args)
+        self.fig_est, self.ax_est = plt.subplots(2, 1, **subplot_kw_args)
 
     def log(
             self,
@@ -277,15 +278,15 @@ class Logger:
         # Estimate
         for k, v in self.estimate.items():
             if "a" in k:
-                self.ax_estimate[1].plot(self.t, v, label=k)
+                self.ax_est[1].plot(self.t, v, label=k)
             else:
-                self.ax_estimate[0].plot(self.t, v, label=k)
-        self.ax_estimate[0].set_title("Velocity Estimates")
-        self.ax_estimate[0].legend(loc="upper left")
-        self.ax_estimate[1].legend(loc="upper left")
-        self.ax_estimate[0].set_ylabel("Velocity [m/s]")
-        self.ax_estimate[1].set_ylabel("Velocity [rad/s]")
-        self.ax_estimate[1].set_xlabel("Time [s]")
+                self.ax_est[0].plot(self.t, v, label=k)
+        self.ax_est[0].set_title("Velocity Estimates")
+        self.ax_est[0].legend(loc="upper left")
+        self.ax_est[1].legend(loc="upper left")
+        self.ax_est[0].set_ylabel("Velocity [m/s]")
+        self.ax_est[1].set_ylabel("Velocity [rad/s]")
+        self.ax_est[1].set_xlabel("Time [s]")
         plt.show()
 
 
@@ -320,7 +321,8 @@ def read_pickled_data(
             "RL_calf_joint": -1.5,
         }
         torque_des = {
-            k: Kp * (q_offset[k] + Ka * action[k] - q[k]) + Kd * dq[k] for k in q_offset.keys()
+            k: Kp * (q_offset[k] + Ka * action[k] - q[k]) + Kd * dq[k]
+            for k in q_offset.keys()
         }
         torque_applied = list_to_dict(obs["tauEst"].tolist())
         estimate = obs["estimates"].flatten().tolist()
@@ -337,31 +339,3 @@ def read_pickled_data(
             estimate,
         )
     logger.plot()
-
-
-def list_to_dict(data: list) -> dict:
-    ref_dict = {
-        "FR_hip_joint": 1,
-        "FL_hip_joint": 0,
-        "RR_hip_joint": 3,
-        "RL_hip_joint": 2,
-        "FR_thigh_joint": 5,
-        "FL_thigh_joint": 4,
-        "RR_thigh_joint": 7,
-        "RL_thigh_joint": 6,
-        "FR_calf_joint": 9,
-        "FL_calf_joint": 8,
-        "RR_calf_joint": 11,
-        "RL_calf_joint": 10,
-    }
-    return {
-        k: cast_to_float(data[v]) for k, v in ref_dict.items()
-    }
-
-
-def cast_to_float(data: Any) -> float:
-    if isinstance(data, np.ndarray):
-        data = data.tolist()
-    while isinstance(data, list):
-        data = data[0]
-    return float(data)

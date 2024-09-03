@@ -1,4 +1,5 @@
 import numpy as np
+from typing import Any
 
 
 def quat_rot_inv(
@@ -14,7 +15,7 @@ def quat_rot_inv(
     return a - b + c
 
 
-def flatten_for_policy(obs) -> np.ndarray:
+def flatten_for_policy(obs: np.ndarray) -> np.ndarray:
     # obs [42, H]
     proj_g = obs[0:3, :].reshape((1, -1))
     vel_cmd = obs[3:6, :].reshape((1, -1))
@@ -46,7 +47,9 @@ def robot_to_policy_joint_reorder(robot_joint_order: np.ndarray) -> np.ndarray:
     return policy_joint_order
 
 
-def policy_to_robot_joint_reorder(policy_joint_order) -> np.ndarray:
+def policy_to_robot_joint_reorder(
+        policy_joint_order: np.ndarray
+) -> np.ndarray:
     robot_joint_order = np.zeros(12, dtype=np.float32)
     robot_joint_order[0] = policy_joint_order[1]  # FR Hip
     robot_joint_order[1] = policy_joint_order[5]  # FR Thigh
@@ -62,3 +65,31 @@ def policy_to_robot_joint_reorder(policy_joint_order) -> np.ndarray:
     robot_joint_order[11] = policy_joint_order[10]  # RL Calf
 
     return robot_joint_order
+
+
+def list_to_dict(data: list) -> dict:
+    ref_dict = {
+        "FR_hip_joint": 1,
+        "FL_hip_joint": 0,
+        "RR_hip_joint": 3,
+        "RL_hip_joint": 2,
+        "FR_thigh_joint": 5,
+        "FL_thigh_joint": 4,
+        "RR_thigh_joint": 7,
+        "RL_thigh_joint": 6,
+        "FR_calf_joint": 9,
+        "FL_calf_joint": 8,
+        "RR_calf_joint": 11,
+        "RL_calf_joint": 10,
+    }
+    return {
+        k: cast_to_float(data[v]) for k, v in ref_dict.items()
+    }
+
+
+def cast_to_float(data: Any) -> float:
+    if isinstance(data, np.ndarray):
+        data = data.tolist()
+    while isinstance(data, list):
+        data = data[0]
+    return float(data)
