@@ -74,11 +74,7 @@ class Runner():
         print(q)
         print("Important: ensure nonzero joint State")
         print("Press enter to continue...")
-        try:
-            input()
-        except (SystemExit, KeyboardInterrupt):
-            self.trigger_estop()
-            return
+        input()
         print("=== Begin Stance ===")
         self.init_stance(stance_duration, startup=True)
         print("=== Hold Stance ===")
@@ -191,7 +187,7 @@ class Runner():
 
             # Update Action
             time_pre_policy = time.time()
-            output = self.ort_session.run(None, {"obs": obs_flat})  # ~5000 Hz
+            output = self.ort_session.run(None, {"obs": obs_flat})  # ~13000 Hz
             self.action = output[0].flatten()
             self.estimates = output[1].flatten()
 

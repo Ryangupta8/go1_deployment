@@ -12,29 +12,6 @@ if __name__ == "__main__":
     runner.save_logs()
 
 """ TODO
-- refactor repo as:
-go1_deployment
-    go1_deployment
-        __init__
-        source
-            __init__
-            constants
-            control_loop
-            runner
-            logger
-            utils
-        scripts
-            __init__
-            deploy
-            plot
-        logs
-            __init__
-        third_party
-            __init__
-        models
-            __init__
-- delete dead code
 - fix imports
-- remove unneeded try/except (see init procedure)
 - tune PD gains (support per-joint gains)
 """
