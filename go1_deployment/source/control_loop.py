@@ -119,7 +119,7 @@ class Go1Env():
     def send_direct_commands(self, policy_q_des) -> None:
         robot_q_des = policy_to_robot_joint_reorder(policy_q_des)
         for motor_id in range(12):
-            self.lowcmd.motorCmd[motor_id].q = robot_q_des
+            self.lowcmd.motorCmd[motor_id].q = robot_q_des[motor_id]
             self.lowcmd.motorCmd[motor_id].Kp = self.kp
             self.lowcmd.motorCmd[motor_id].dq = 0
             self.lowcmd.motorCmd[motor_id].Kd = self.kd
