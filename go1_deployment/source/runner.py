@@ -111,8 +111,9 @@ class Runner():
         while time.time() - start_time < duration:
             current_time = time.time()
             if startup:
+                q = obs[6:18] + self.env.policy_q_stand
                 init_action = self.action_smoothing(
-                    obs[6:18],
+                    q,
                     self.env.policy_q_stand,
                     100,
                 )
