@@ -2,7 +2,7 @@ import math
 import numpy as np
 from typing import Any
 
-from utils import (
+from .utils import (
     quat_rot_inv,
     robot_to_policy_joint_reorder,
     policy_to_robot_joint_reorder

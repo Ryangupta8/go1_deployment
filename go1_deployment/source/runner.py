@@ -5,9 +5,9 @@ import pickle
 import time
 from typing import Generator
 
-from constants import H, OBS_LEN, POLICY_STEP
-from control_loop import Go1Env
-from utils import flatten_for_policy, robot_to_policy_joint_reorder
+from .constants import H, OBS_LEN, POLICY_STEP
+from .control_loop import Go1Env
+from .utils import flatten_for_policy, robot_to_policy_joint_reorder
 
 from go1_deployment import DIR_PATH
 

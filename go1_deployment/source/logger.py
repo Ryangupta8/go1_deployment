@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pickle
 
-from utils import list_to_dict
+from .utils import list_to_dict
 
 
 class Logger:
