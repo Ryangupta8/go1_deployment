@@ -68,7 +68,7 @@ class Go1Env():
             self.send_commands(policy_action)
         elif action_space == "position":
             self.send_direct_commands(policy_action)
-        policy_obs = self.get_obs(policy_action, gait_mode, vel_cmd_override, action_space)
+        policy_obs = self.get_obs(policy_action, gait_mode, vel_cmd_override)
         # self.policy_last_obs = obs  # only used in direct torque control
         return policy_obs, self.lowstate
 
@@ -77,7 +77,6 @@ class Go1Env():
             policy_action: np.ndarray,
             gait_mode: np.ndarray,
             vel_cmd_override: np.ndarray,
-            action_space: str = "offset"
     ) -> np.ndarray:
         self.udp.Recv()
         self.udp.GetRecv(self.lowstate)
@@ -104,8 +103,6 @@ class Go1Env():
         # Joint Velocity
         robot_dq = np.array([motor.dq for motor in motors])
         policy_dq = robot_to_policy_joint_reorder(robot_dq)
-        if action_space == "position":
-            policy_action += self.policy_q_stand
 
         return np.concatenate((
             projected_gravity,
@@ -120,7 +117,7 @@ class Go1Env():
         robot_q_des = policy_to_robot_joint_reorder(policy_q_des)
         for motor_id in range(12):
             self.lowcmd.motorCmd[motor_id].q = robot_q_des[motor_id]
-            self.lowcmd.motorCmd[motor_id].Kp = self.kp
+            self.lowcmd.motorCmd[motor_id].Kp = self.kp / 10
             self.lowcmd.motorCmd[motor_id].dq = 0
             self.lowcmd.motorCmd[motor_id].Kd = self.kd
             self.lowcmd.motorCmd[motor_id].tau = 0

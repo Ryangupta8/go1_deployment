@@ -86,25 +86,19 @@ class Runner():
             q_des: np.ndarray,
             steps: int,
             mode: str = "linear",
-            action_space: str = "offset"
     ) -> np.ndarray:
         q = q_rel + q_ref
         delta_q = q_des - q
         if mode == "linear":
             q_next = q + (delta_q / steps)
+            action = q_next - q_ref
         else:
             print(f"Error: action smoothing mode {mode} undefined")
             self.trigger_estop()
         print(f"q: {q}")
         print(f"q_next: {q_next}")
         print(f"q_next-q: {q_next-q}")
-        if action_space == "offset":
-            action = q_next - q_ref
-        elif action_space == "position":
-            action = q_next
-        else:
-            print(f"Error: action smoothing action space {action_space} undefined")
-            self.trigger_estop()
+        print(f"action: {action}")
         return action
 
     def init_stance(
@@ -129,12 +123,12 @@ class Runner():
                     q_ref=self.env.policy_q_stand,
                     q_des=self.env.policy_q_stand,
                     steps=100,
-                    action_space="position"
                 )
             # Actuate Robot
             while time.time() - current_time < POLICY_STEP:
                 obs, lowstate = self.env.step(
                     init_action,
+                    obs[6:18] + self.env.policy_q_stand,
                     self.gait_mode,
                     zero_vel,
                     "position" if startup else "offset",
