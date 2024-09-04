@@ -112,8 +112,6 @@ class Runner():
             self.gait_mode,
             zero_vel,
         )
-        if startup:
-            self.env.send_zero_commands()
         start_time = time.time()
         while time.time() - start_time < duration:
             current_time = time.time()
@@ -129,7 +127,8 @@ class Runner():
                 obs, lowstate = self.env.step(
                     init_action,
                     self.gait_mode,
-                    zero_vel
+                    zero_vel,
+                    "position" if startup else "offset",
                 )
             # Write Logs
             motors = lowstate.motorState[:12]
