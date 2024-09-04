@@ -6,7 +6,7 @@ if __name__ == "__main__":
     runner = Runner(onnx_file)
     try:
         runner.start_robot(init_duration=1, stance_duration=5)
-        runner.run()
+        # runner.run()
     except (SystemExit, KeyboardInterrupt):
         runner.trigger_estop()
     runner.save_logs()
