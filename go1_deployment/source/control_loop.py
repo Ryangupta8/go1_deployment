@@ -7,6 +7,7 @@ from utils import (
     robot_to_policy_joint_reorder,
     policy_to_robot_joint_reorder
 )
+
 from go1_deployment import robot_interface as sdk
 
 PosStopF = math.pow(10, 9)
