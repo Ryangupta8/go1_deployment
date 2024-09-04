@@ -108,6 +108,24 @@ class Go1Env():
             policy_action,
             gait_mode,
         ), axis=0).flatten()
+    
+    def send_zero_commands(self) -> None:
+        for motor_id in range(12):
+            self.lowcmd.motorCmd[motor_id].q = 0
+            self.lowcmd.motorCmd[motor_id].Kp = 0
+            self.lowcmd.motorCmd[motor_id].dq = 0
+            self.lowcmd.motorCmd[motor_id].Kd = 0
+            self.lowcmd.motorCmd[motor_id].tau = 0
+        unsafe = self.safe.PowerProtect(
+            self.lowcmd,
+            self.lowstate,
+            self.safe_level
+        )
+        if unsafe < 0:
+            self.trigger_estop()
+            raise SystemExit
+        self.udp.SetSend(self.lowcmd)
+        self.udp.Send()
 
     def send_commands(
             self,

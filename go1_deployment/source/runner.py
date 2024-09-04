@@ -112,6 +112,8 @@ class Runner():
             self.gait_mode,
             zero_vel,
         )
+        if startup:
+            self.env.send_zero_commands()
         start_time = time.time()
         while time.time() - start_time < duration:
             current_time = time.time()
