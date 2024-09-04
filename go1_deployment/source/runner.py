@@ -76,7 +76,7 @@ class Runner():
         print("=== Begin Stance ===")
         self.init_stance(stance_duration, startup=True)
         print("=== Hold Stance ===")
-        self.init_stance(stance_duration, startup=False)
+        # self.init_stance(stance_duration, startup=False)
         print("=== Policy Start ===")
 
     def action_smoothing(
@@ -131,7 +131,7 @@ class Runner():
                     obs[6:18] + self.env.policy_q_stand,
                     self.gait_mode,
                     zero_vel,
-                    "position" if startup else "offset",
+                    "direct",
                 )
             # Write Logs
             motors = lowstate.motorState[:12]

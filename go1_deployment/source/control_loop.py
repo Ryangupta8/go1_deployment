@@ -1,6 +1,6 @@
 import math
 import numpy as np
-from typing import Any
+from typing import Any, Literal
 
 from .utils import (
     quat_rot_inv,
@@ -43,7 +43,7 @@ class Go1Env():
         self.policy_q_stand = robot_to_policy_joint_reorder(self.robot_q_stand)
         self.gravity = np.array([0, 0, -9.81])
         self.gravity /= np.linalg.norm(self.gravity)  # normalized
-        self.kp = 30
+        self.kp = 5  # 30
         self.kd = 0.5
         self.ka = 0.25
         self.stance_trigger = 1
@@ -62,12 +62,9 @@ class Go1Env():
             policy_action: np.ndarray,
             gait_mode: np.ndarray,
             vel_cmd_override: np.ndarray = None,
-            action_space: str = "offset"
+            control_mode: Literal["pd", "hybrid", "direct"] = "hybrid",
     ) -> tuple[np.ndarray, Any]:
-        if action_space == "offset":
-            self.send_commands(policy_action)
-        elif action_space == "position":
-            self.send_direct_commands(policy_action)
+        self.send_commands(policy_action, mode=control_mode)
         policy_obs = self.get_obs(policy_action, gait_mode, vel_cmd_override)
         # self.policy_last_obs = obs  # only used in direct torque control
         return policy_obs, self.lowstate
@@ -112,52 +109,43 @@ class Go1Env():
             policy_action,
             gait_mode,
         ), axis=0).flatten()
-    
-    def send_direct_commands(self, policy_q_des) -> None:
-        robot_q_des = policy_to_robot_joint_reorder(policy_q_des)
-        for motor_id in range(12):
-            self.lowcmd.motorCmd[motor_id].q = robot_q_des[motor_id]
-            self.lowcmd.motorCmd[motor_id].Kp = self.kp / 10
-            self.lowcmd.motorCmd[motor_id].dq = 0
-            self.lowcmd.motorCmd[motor_id].Kd = self.kd
-            self.lowcmd.motorCmd[motor_id].tau = 0
-        unsafe = self.safe.PowerProtect(
-            self.lowcmd,
-            self.lowstate,
-            self.safe_level
-        )
-        if unsafe < 0:
-            self.trigger_estop()
-            raise SystemExit
-        self.udp.SetSend(self.lowcmd)
-        self.udp.Send()
 
     def send_commands(
             self,
             policy_action: np.ndarray,
             policy_q_rel: np.ndarray = None,
             policy_dq: np.ndarray = None,
+            mode: Literal["pd", "hybrid", "direct"] = "hybrid",
     ) -> None:
         robot_action = policy_to_robot_joint_reorder(policy_action)
 
         # Mode 1 - Joint PD Control:
-        # for motor_id in range(12):
-        #     q_default = self.robot_q_stand[motor_id]
-        #     q_act = self.stance_trigger * self.ka * robot_action[motor_id]
-        #     self.lowcmd.motorCmd[motor_id].q = q_default + q_act
-        #     self.lowcmd.motorCmd[motor_id].Kp = self.kp
-        #     self.lowcmd.motorCmd[motor_id].dq = 0
-        #     self.lowcmd.motorCmd[motor_id].Kd = self.kd
+        if mode == "pd":
+            for motor_id in range(12):
+                q_default = self.robot_q_stand[motor_id]
+                q_act = self.stance_trigger * self.ka * robot_action[motor_id]
+                self.lowcmd.motorCmd[motor_id].q = q_default + q_act
+                self.lowcmd.motorCmd[motor_id].Kp = self.kp
+                self.lowcmd.motorCmd[motor_id].dq = 0
+                self.lowcmd.motorCmd[motor_id].Kd = self.kd
         # Mode 2 - Hybrid Control:
-        for motor_id in range(12):
-            q_default = self.robot_q_stand[motor_id]
-            q_act = self.stance_trigger * self.ka * robot_action[motor_id]
-            self.lowcmd.motorCmd[motor_id].q = q_default
-            self.lowcmd.motorCmd[motor_id].Kp = self.kp
-            self.lowcmd.motorCmd[motor_id].dq = 0
-            self.lowcmd.motorCmd[motor_id].Kd = self.kd
-            self.lowcmd.motorCmd[motor_id].tau = self.kp * q_act
-        # Mode 3 - Direct Torque Control:
+        elif mode == "hybrid":
+            for motor_id in range(12):
+                q_default = self.robot_q_stand[motor_id]
+                q_act = self.stance_trigger * self.ka * robot_action[motor_id]
+                self.lowcmd.motorCmd[motor_id].q = q_default
+                self.lowcmd.motorCmd[motor_id].Kp = self.kp
+                self.lowcmd.motorCmd[motor_id].dq = 0
+                self.lowcmd.motorCmd[motor_id].Kd = self.kd
+                self.lowcmd.motorCmd[motor_id].tau = self.kp * q_act
+        # Mode 3 - Direct Position Control:
+        elif mode == "direct":
+            for motor_id in range(12):
+                self.lowcmd.motorCmd[motor_id].q = robot_action[motor_id]
+                self.lowcmd.motorCmd[motor_id].Kp = self.kp
+                self.lowcmd.motorCmd[motor_id].dq = 0
+                self.lowcmd.motorCmd[motor_id].Kd = self.kd
+        # Mode 4 - Direct Torque Control:
         # robot_q_rel = policy_to_robot_joint_reorder(policy_q_rel)
         # robot_dq = policy_to_robot_joint_reorder(policy_dq)
         # for motor_id in range(12):
@@ -168,6 +156,9 @@ class Go1Env():
         #     self.lowcmd.motorCmd[motor_id].Kp = 0
         #     self.lowcmd.motorCmd[motor_id].Kd = 0
         #     self.lowcmd.motorCmd[motor_id].tau = torque
+        else:
+            print(f"Error: control mode {mode} undefined")
+            self.trigger_estop()
         unsafe = self.safe.PowerProtect(
             self.lowcmd,
             self.lowstate,
@@ -175,7 +166,6 @@ class Go1Env():
         )
         if unsafe < 0:
             self.trigger_estop()
-            raise SystemExit
         self.udp.SetSend(self.lowcmd)
         self.udp.Send()
 
@@ -193,7 +183,7 @@ class Go1Env():
         if unsafe >= 0:
             self.udp.SetSend(self.lowcmd)
             self.udp.Send()
-        raise SystemExit
+        raise SystemExit  # TODO remove
 
     @property
     def is_stopped(self) -> int:
