@@ -120,7 +120,7 @@ class Runner():
                     q_rel=obs[6:18],
                     q_ref=self.env.policy_q_stand,
                     q_des=self.env.policy_q_stand,
-                    steps=1000,
+                    steps=100,
                 )
             # Actuate Robot
             while time.time() - current_time < POLICY_STEP:
