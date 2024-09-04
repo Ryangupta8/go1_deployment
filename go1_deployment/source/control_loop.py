@@ -167,10 +167,10 @@ class Go1Env():
             self.lowstate,
             self.safe_level
         )
-        if unsafe < 0:
-            raise SystemExit
-        self.udp.SetSend(self.lowcmd)
-        self.udp.Send()
+        if unsafe >= 0:
+            self.udp.SetSend(self.lowcmd)
+            self.udp.Send()
+        raise SystemExit
 
     @property
     def is_stopped(self) -> int:

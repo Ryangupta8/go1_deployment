@@ -92,7 +92,6 @@ class Runner():
         else:
             print("Error: action smoothing mode {} undefined".format(mode))
             self.trigger_estop()
-            return
         return q_next
 
     def init_stance(
@@ -117,6 +116,7 @@ class Runner():
                     self.env.policy_q_stand,
                     100,
                 )
+                print(init_action[0])
             # Actuate Robot
             while time.time() - current_time < POLICY_STEP:
                 obs, lowstate = self.env.step(
