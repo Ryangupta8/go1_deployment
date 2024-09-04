@@ -51,6 +51,7 @@ class Go1Env():
         # Unitree Interface
         self.estop = 0
         self.udp = sdk.UDP(LOWLEVEL, 8080, "192.168.123.10", 8007)
+        self.safe_level = 1  # int from 1 to 9
         self.safe = sdk.Safety(sdk.LeggedType.Go1)
         self.lowcmd = sdk.LowCmd()
         self.lowstate = sdk.LowState()
@@ -144,7 +145,14 @@ class Go1Env():
         #     self.lowcmd.motorCmd[motor_id].Kp = 0
         #     self.lowcmd.motorCmd[motor_id].Kd = 0
         #     self.lowcmd.motorCmd[motor_id].tau = torque
-        self.safe.PowerProtect(self.lowcmd, self.lowstate, 1)
+        unsafe = self.safe.PowerProtect(
+            self.lowcmd,
+            self.lowstate,
+            self.safe_level
+        )
+        if unsafe < 0:
+            self.trigger_estop()
+            raise SystemExit
         self.udp.SetSend(self.lowcmd)
         self.udp.Send()
 
@@ -154,7 +162,13 @@ class Go1Env():
             self.lowcmd.motorCmd[motor_id].Kp = 0
             self.lowcmd.motorCmd[motor_id].Kd = 0
             self.lowcmd.motorCmd[motor_id].tau = 0
-        self.safe.PowerProtect(self.lowcmd, self.lowstate, 1)
+        unsafe = self.safe.PowerProtect(
+            self.lowcmd,
+            self.lowstate,
+            self.safe_level
+        )
+        if unsafe < 0:
+            raise SystemExit
         self.udp.SetSend(self.lowcmd)
         self.udp.Send()
 
