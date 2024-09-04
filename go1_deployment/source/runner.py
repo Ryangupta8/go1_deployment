@@ -97,7 +97,7 @@ class Runner():
         print(f"q: {q}")
         print(f"q_next: {q_next}")
         print(f"q_next-q: {q_next-q}")
-        return q_next
+        return q_next - q_ref
 
     def init_stance(
             self,
