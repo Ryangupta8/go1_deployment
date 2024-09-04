@@ -43,7 +43,7 @@ class Go1Env():
         self.policy_q_stand = robot_to_policy_joint_reorder(self.robot_q_stand)
         self.gravity = np.array([0, 0, -9.81])
         self.gravity /= np.linalg.norm(self.gravity)  # normalized
-        self.kp = 5  # 30
+        self.kp = 30
         self.kd = 0.5
         self.ka = 0.25
         self.stance_trigger = 1
