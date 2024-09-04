@@ -3,7 +3,7 @@ import numpy as np
 import onnxruntime as ort
 import pickle
 import time
-from typing import Generator
+from typing import Iterator
 
 from .constants import H, OBS_LEN, POLICY_STEP
 from .control_loop import Go1Env
@@ -12,7 +12,7 @@ from .utils import flatten_for_policy, robot_to_policy_joint_reorder
 from go1_deployment import DIR_PATH
 
 
-def vel_cmd_generator() -> Generator[np.ndarray]:
+def vel_cmd_generator() -> Iterator[np.ndarray]:
     commands = [
         np.array([0, 0, 0], dtype=np.float32),  # stance
         np.array([0.5, 0, 0], dtype=np.float32),  # forward
