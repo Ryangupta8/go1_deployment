@@ -96,6 +96,7 @@ class Runner():
             self.trigger_estop()
         print(f"q: {q}")
         print(f"q_next: {q_next}")
+        print(f"q_next-q: {q_next-q}")
         return q_next
 
     def init_stance(
