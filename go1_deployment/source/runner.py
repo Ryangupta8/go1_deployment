@@ -66,7 +66,7 @@ class Runner():
                 self.gait_mode,
                 zero_vel
             )
-        q = obs[6:18].tolist()
+        q = (obs[6:18] + self.env.policy_q_stand).tolist()
         print("=== Robot Start ===")
         print("Initial Joint State:")
         print(q)
@@ -81,17 +81,21 @@ class Runner():
 
     def action_smoothing(
             self,
-            q: np.ndarray,
+            q_rel: np.ndarray,
+            q_ref: np.ndarray,
             q_des: np.ndarray,
             steps: int,
             mode: str = "linear",
     ) -> np.ndarray:
+        q = q_rel + q_ref
         delta_q = q_des - q
         if mode == "linear":
-            q_next = q + delta_q / steps
+            q_next = q + (delta_q / steps)
         else:
             print("Error: action smoothing mode {} undefined".format(mode))
             self.trigger_estop()
+        print(f"q: {q}")
+        print(f"q_next: {q_next}")
         return q_next
 
     def init_stance(
@@ -111,13 +115,12 @@ class Runner():
         while time.time() - start_time < duration:
             current_time = time.time()
             if startup:
-                q = obs[6:18] + self.env.policy_q_stand
                 init_action = self.action_smoothing(
-                    q,
-                    self.env.policy_q_stand,
-                    100,
+                    q_rel=obs[6:18],
+                    q_ref=self.env.policy_q_stand,
+                    q_des=self.env.policy_q_stand,
+                    steps=100,
                 )
-                print(init_action[0])
             # Actuate Robot
             while time.time() - current_time < POLICY_STEP:
                 obs, lowstate = self.env.step(
