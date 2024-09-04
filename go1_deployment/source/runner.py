@@ -127,7 +127,7 @@ class Runner():
             # Actuate Robot
             while time.time() - current_time < POLICY_STEP:
                 obs, lowstate = self.env.step(
-                    init_action,
+                    # init_action,
                     obs[6:18] + self.env.policy_q_stand,
                     self.gait_mode,
                     zero_vel,
