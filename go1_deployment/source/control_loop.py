@@ -135,6 +135,7 @@ class Go1Env():
                 self.lowcmd.motorCmd[motor_id].Kp = self.kp
                 self.lowcmd.motorCmd[motor_id].dq = 0
                 self.lowcmd.motorCmd[motor_id].Kd = self.kd
+                self.lowcmd.motorCmd[motor_id].tau = 0
         # Mode 2 - Hybrid Control:
         elif mode == "hybrid":
             for motor_id in range(12):
@@ -152,6 +153,7 @@ class Go1Env():
                 self.lowcmd.motorCmd[motor_id].Kp = self.kp
                 self.lowcmd.motorCmd[motor_id].dq = 0
                 self.lowcmd.motorCmd[motor_id].Kd = self.kd
+                self.lowcmd.motorCmd[motor_id].tau = 0
         # Mode 4 - Direct Torque Control:
         # robot_q_rel = policy_to_robot_joint_reorder(policy_q_rel)
         # robot_dq = policy_to_robot_joint_reorder(policy_dq)
@@ -171,10 +173,11 @@ class Go1Env():
             self.lowstate,
             self.safe_level
         )
-        if unsafe < 0:
+        if unsafe >= 0:
+            self.udp.SetSend(self.lowcmd)
+            self.udp.Send()
+        else:
             self.trigger_estop()
-        self.udp.SetSend(self.lowcmd)
-        self.udp.Send()
 
     def trigger_estop(self) -> None:
         self.estop = 1
@@ -190,7 +193,7 @@ class Go1Env():
         if unsafe >= 0:
             self.udp.SetSend(self.lowcmd)
             self.udp.Send()
-        raise SystemExit  # TODO remove
+        # raise SystemExit  # TODO remove
 
     @property
     def is_stopped(self) -> int:

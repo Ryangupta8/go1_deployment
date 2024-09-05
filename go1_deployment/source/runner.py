@@ -124,7 +124,7 @@ class Runner():
         init_q = obs[6:18]
         start_time = time.time()
         step = 0
-        while time.time() - start_time < duration:
+        while time.time() - start_time < duration and not self.env.is_stopped:
             current_time = time.time()
             if startup:
                 init_action = self.action_smoothing(
@@ -147,34 +147,34 @@ class Runner():
                     zero_vel,
                     "direct" if startup else "hybrid",
                 )
-            # Write Logs
-            motors = lowstate.motorState[:12]
-            if startup:
-                init_action -= self.env.policy_q_stand
-            self.logs.append({
-                # policy order
-                "time": current_time,
-                "action": init_action,
-                "q": obs[6:18],
-                "dq": obs[18:30],
-                "projected_gravity": obs[0:3],
-                "vel_cmd": obs[3:6],
-                "last_action": obs[30:42],
-                "gait_mode": obs[42:46],
-                "estimates": self.estimates,
-                "ddq": robot_to_policy_joint_reorder(
-                    np.array([motor.ddq for motor in motors])),
-                "tauEst": robot_to_policy_joint_reorder(
-                    np.array([motor.tauEst for motor in motors])),
-                # robot order
-                "wirelessRemote": lowstate.wirelessRemote[:],
-                "footforce": lowstate.footForce[:],
-                "footforceEst": lowstate.footForceEst[:],
-                "quaternion": lowstate.imu.quaternion[:],
-                "gyroscope": lowstate.imu.gyroscope[:],
-                "accelerometer": lowstate.imu.accelerometer[:],
-                "rpy": lowstate.imu.rpy[:],
-            })
+                # Write Logs
+                motors = lowstate.motorState[:12]
+                if startup:
+                    init_action -= self.env.policy_q_stand
+                self.logs.append({
+                    # policy order
+                    "time": current_time,
+                    "action": init_action,
+                    "q": obs[6:18],
+                    "dq": obs[18:30],
+                    "projected_gravity": obs[0:3],
+                    "vel_cmd": obs[3:6],
+                    "last_action": obs[30:42],
+                    "gait_mode": obs[42:46],
+                    "estimates": self.estimates,
+                    "ddq": robot_to_policy_joint_reorder(
+                        np.array([motor.ddq for motor in motors])),
+                    "tauEst": robot_to_policy_joint_reorder(
+                        np.array([motor.tauEst for motor in motors])),
+                    # robot order
+                    "wirelessRemote": lowstate.wirelessRemote[:],
+                    "footforce": lowstate.footForce[:],
+                    "footforceEst": lowstate.footForceEst[:],
+                    "quaternion": lowstate.imu.quaternion[:],
+                    "gyroscope": lowstate.imu.gyroscope[:],
+                    "accelerometer": lowstate.imu.accelerometer[:],
+                    "rpy": lowstate.imu.rpy[:],
+                })
 
     def run(self) -> list:
         print("=== Policy Running ===")
