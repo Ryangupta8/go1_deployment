@@ -1,7 +1,9 @@
-import math
 import numpy as np
 from typing import Any, Literal
 
+from .constants import (
+    LOWLEVEL, KP, KD, KA
+)
 from .utils import (
     quat_rot_inv,
     robot_to_policy_joint_reorder,
@@ -9,10 +11,6 @@ from .utils import (
 )
 
 from go1_deployment import robot_interface as sdk
-
-PosStopF = math.pow(10, 9)
-VelStopF = 16000.0
-LOWLEVEL = 0xff
 
 
 class Go1Env():
@@ -43,9 +41,9 @@ class Go1Env():
         self.policy_q_stand = robot_to_policy_joint_reorder(self.robot_q_stand)
         self.gravity = np.array([0, 0, -9.81])
         self.gravity /= np.linalg.norm(self.gravity)  # normalized
-        self.kp = 30
-        self.kd = 0.5
-        self.ka = 0.25
+        self.kp = KP
+        self.kd = KD
+        self.ka = KA
         self.stance_trigger = 1
 
         # Unitree Interface

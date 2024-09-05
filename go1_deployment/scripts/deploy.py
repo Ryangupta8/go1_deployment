@@ -12,6 +12,5 @@ if __name__ == "__main__":
     runner.save_logs()
 
 """ TODO
-- fix imports
 - tune PD gains (support per-joint gains)
 """
