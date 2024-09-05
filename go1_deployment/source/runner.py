@@ -5,7 +5,7 @@ import pickle
 import time
 from typing import Iterator, Literal
 
-from .constants import H, OBS_LEN, POLICY_STEP
+from .constants import H, OBS_LEN, POLICY_STEP, INIT_STEPS
 from .control_loop import Go1Env
 from .utils import flatten_for_policy, robot_to_policy_joint_reorder
 
@@ -84,16 +84,27 @@ class Runner():
             q_rel: np.ndarray,
             q_ref: np.ndarray,
             q_des: np.ndarray,
-            steps: int,
-            mode: Literal["linear"] = "linear",
+            step: int,
+            max_steps: int,
+            mode: Literal["linear", "sine"] = "linear",
+            control_mode: Literal["pd", "hybrid", "direct"] = "direct"
     ) -> np.ndarray:
         q = q_rel + q_ref
         delta_q = q_des - q
+        delta_step = step / max_steps
         if mode == "linear":
-            q_next = q + (delta_q / steps)
-            action = q_next  # - q_ref
+            q_next = q + (delta_q * delta_step)
+        elif mode == "sine":
+            q_next = q + delta_q * (1 - np.cos(delta_step * np.pi)) / 2
         else:
             print(f"Error: action smoothing mode {mode} undefined")
+            self.trigger_estop()
+        if control_mode in ["pd", "hybrid"]:
+            action = q_next - q_ref
+        elif control_mode == "direct":
+            action = q_next
+        else:
+            print(f"Error: control mode {control_mode} undefined")
             self.trigger_estop()
         return action
 
@@ -110,26 +121,36 @@ class Runner():
             self.gait_mode,
             zero_vel,
         )
+        init_q = obs[6:18]
         start_time = time.time()
+        step = 0
         while time.time() - start_time < duration:
             current_time = time.time()
             if startup:
                 init_action = self.action_smoothing(
-                    q_rel=obs[6:18],
+                    q_rel=init_q,
                     q_ref=self.env.policy_q_stand,
                     q_des=self.env.policy_q_stand,
-                    steps=100,
+                    step=step,
+                    max_steps=INIT_STEPS,
+                    mode="linear",
+                    control_mode="direct"
                 )
+            else:
+                init_action = np.zeros_like(self.action)
+            step += 1
             # Actuate Robot
             while time.time() - current_time < POLICY_STEP:
                 obs, lowstate = self.env.step(
                     init_action,
                     self.gait_mode,
                     zero_vel,
-                    "direct",
+                    "direct" if startup else "hybrid",
                 )
             # Write Logs
             motors = lowstate.motorState[:12]
+            if startup:
+                init_action -= self.env.policy_q_stand
             self.logs.append({
                 # policy order
                 "time": current_time,

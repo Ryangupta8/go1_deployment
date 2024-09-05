@@ -10,3 +10,4 @@ H = 5
 KP = 30
 KD = 0.5
 KA = 0.25
+INIT_STEPS = 100
