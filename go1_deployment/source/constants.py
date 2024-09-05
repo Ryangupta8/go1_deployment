@@ -11,3 +11,7 @@ KP = 30
 KD = 0.5
 KA = 0.25
 INIT_STEPS = 100
+INTERP_MODE = "linear"
+INIT_CONTROL_MODE = "direct"
+CONTROL_MODE = "hybrid"
+SAFE_LEVEL = 1  # int from 1 (10%) to 9 (100%)

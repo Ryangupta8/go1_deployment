@@ -2,15 +2,16 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pickle
 
+from .constants import KP, KD, KA, POLICY_STEP
 from .utils import list_to_dict
 
 
 class Logger:
-    def __init__(self, Ka: float = 0.25, f: float = 50) -> None:
+    def __init__(self) -> None:
         # Data
-        self.Ka = Ka
+        self.Ka = KA
         # Time
-        self.dt = 1. / f
+        self.dt = POLICY_STEP
         self.t = []
         self.init_time = None
         # Projected Gravity
@@ -293,9 +294,9 @@ class Logger:
 def read_pickled_data(
         logger: Logger,
         pickle_file: str,
-        Kp: float = 30,
-        Kd: float = 0.5,
-        Ka: float = 0.25,
+        Kp: float = KP,
+        Kd: float = KD,
+        Ka: float = KA,
 ) -> None:
     with open(pickle_file, "rb") as file:
         data = pickle.load(file)

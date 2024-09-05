@@ -5,7 +5,10 @@ import pickle
 import time
 from typing import Iterator, Literal
 
-from .constants import H, OBS_LEN, POLICY_STEP, INIT_STEPS
+from .constants import (
+    H, OBS_LEN, POLICY_STEP, INIT_STEPS,
+    INTERP_MODE, INIT_CONTROL_MODE, CONTROL_MODE
+)
 from .control_loop import Go1Env
 from .utils import flatten_for_policy, robot_to_policy_joint_reorder
 
@@ -133,8 +136,8 @@ class Runner():
                     q_des=self.env.policy_q_stand,
                     step=step,
                     max_steps=INIT_STEPS,
-                    mode="linear",
-                    control_mode="direct"
+                    mode=INTERP_MODE,
+                    control_mode=INIT_CONTROL_MODE,
                 )
             else:
                 init_action = np.zeros_like(self.action)
@@ -145,36 +148,36 @@ class Runner():
                     init_action,
                     self.gait_mode,
                     zero_vel,
-                    "direct" if startup else "hybrid",
+                    INIT_CONTROL_MODE if startup else CONTROL_MODE,
                 )
                 # Write Logs
                 motors = lowstate.motorState[:12]
-                if startup:
-                    init_action -= self.env.policy_q_stand
-                self.logs.append({
-                    # policy order
-                    "time": current_time,
-                    "action": init_action,
-                    "q": obs[6:18],
-                    "dq": obs[18:30],
-                    "projected_gravity": obs[0:3],
-                    "vel_cmd": obs[3:6],
-                    "last_action": obs[30:42],
-                    "gait_mode": obs[42:46],
-                    "estimates": self.estimates,
-                    "ddq": robot_to_policy_joint_reorder(
-                        np.array([motor.ddq for motor in motors])),
-                    "tauEst": robot_to_policy_joint_reorder(
-                        np.array([motor.tauEst for motor in motors])),
-                    # robot order
-                    "wirelessRemote": lowstate.wirelessRemote[:],
-                    "footforce": lowstate.footForce[:],
-                    "footforceEst": lowstate.footForceEst[:],
-                    "quaternion": lowstate.imu.quaternion[:],
-                    "gyroscope": lowstate.imu.gyroscope[:],
-                    "accelerometer": lowstate.imu.accelerometer[:],
-                    "rpy": lowstate.imu.rpy[:],
-                })
+            if INIT_CONTROL_MODE == "direct":
+                init_action -= self.env.policy_q_stand
+            self.logs.append({
+                # policy order
+                "time": current_time,
+                "action": init_action,
+                "q": obs[6:18],
+                "dq": obs[18:30],
+                "projected_gravity": obs[0:3],
+                "vel_cmd": obs[3:6],
+                "last_action": obs[30:42],
+                "gait_mode": obs[42:46],
+                "estimates": self.estimates,
+                "ddq": robot_to_policy_joint_reorder(
+                    np.array([motor.ddq for motor in motors])),
+                "tauEst": robot_to_policy_joint_reorder(
+                    np.array([motor.tauEst for motor in motors])),
+                # robot order
+                "wirelessRemote": lowstate.wirelessRemote[:],
+                "footforce": lowstate.footForce[:],
+                "footforceEst": lowstate.footForceEst[:],
+                "quaternion": lowstate.imu.quaternion[:],
+                "gyroscope": lowstate.imu.gyroscope[:],
+                "accelerometer": lowstate.imu.accelerometer[:],
+                "rpy": lowstate.imu.rpy[:],
+            })
 
     def run(self) -> list:
         print("=== Policy Running ===")

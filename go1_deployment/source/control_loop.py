@@ -2,7 +2,7 @@ import numpy as np
 from typing import Any, Literal
 
 from .constants import (
-    LOWLEVEL, KP, KD, KA
+    LOWLEVEL, KP, KD, KA, SAFE_LEVEL
 )
 from .utils import (
     quat_rot_inv,
@@ -10,7 +10,7 @@ from .utils import (
     policy_to_robot_joint_reorder
 )
 
-from go1_deployment import robot_interface as sdk
+from go1_deployment.third_party import robot_interface as sdk
 
 
 class Go1Env():
@@ -49,7 +49,7 @@ class Go1Env():
         # Unitree Interface
         self.estop = 0
         self.udp = sdk.UDP(LOWLEVEL, 8080, "192.168.123.10", 8007)
-        self.safe_level = 1  # int from 1 (10%) to 9 (100%)
+        self.safe_level = SAFE_LEVEL
         self.safe = sdk.Safety(sdk.LeggedType.Go1)
         self.lowcmd = sdk.LowCmd()
         self.lowstate = sdk.LowState()
