@@ -51,7 +51,7 @@ class Go1Env():
         # Unitree Interface
         self.estop = 0
         self.udp = sdk.UDP(LOWLEVEL, 8080, "192.168.123.10", 8007)
-        self.safe_level = 1  # int from 1 to 9
+        self.safe_level = 1  # int from 1 (10%) to 9 (100%)
         self.safe = sdk.Safety(sdk.LeggedType.Go1)
         self.lowcmd = sdk.LowCmd()
         self.lowstate = sdk.LowState()
@@ -65,7 +65,12 @@ class Go1Env():
             control_mode: Literal["pd", "hybrid", "direct"] = "hybrid",
     ) -> tuple[np.ndarray, Any]:
         self.send_commands(policy_action, mode=control_mode)
-        policy_obs = self.get_obs(policy_action, gait_mode, vel_cmd_override)
+        policy_obs = self.get_obs(
+            policy_action,
+            gait_mode,
+            vel_cmd_override,
+            control_mode,
+        )
         # self.policy_last_obs = obs  # only used in direct torque control
         return policy_obs, self.lowstate
 
@@ -74,6 +79,7 @@ class Go1Env():
             policy_action: np.ndarray,
             gait_mode: np.ndarray,
             vel_cmd_override: np.ndarray,
+            control_mode: Literal["pd", "hybrid", "direct"] = "hybrid",
     ) -> np.ndarray:
         self.udp.Recv()
         self.udp.GetRecv(self.lowstate)
@@ -100,6 +106,9 @@ class Go1Env():
         # Joint Velocity
         robot_dq = np.array([motor.dq for motor in motors])
         policy_dq = robot_to_policy_joint_reorder(robot_dq)
+        # Action
+        if control_mode == "direct":
+            policy_action -= self.policy_q_stand
 
         return np.concatenate((
             projected_gravity,

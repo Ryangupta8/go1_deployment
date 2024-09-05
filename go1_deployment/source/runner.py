@@ -3,7 +3,7 @@ import numpy as np
 import onnxruntime as ort
 import pickle
 import time
-from typing import Iterator
+from typing import Iterator, Literal
 
 from .constants import H, OBS_LEN, POLICY_STEP
 from .control_loop import Go1Env
@@ -85,20 +85,16 @@ class Runner():
             q_ref: np.ndarray,
             q_des: np.ndarray,
             steps: int,
-            mode: str = "linear",
+            mode: Literal["linear"] = "linear",
     ) -> np.ndarray:
         q = q_rel + q_ref
         delta_q = q_des - q
         if mode == "linear":
             q_next = q + (delta_q / steps)
-            action = q_next - q_ref
+            action = q_next  # - q_ref
         else:
             print(f"Error: action smoothing mode {mode} undefined")
             self.trigger_estop()
-        print(f"q: {q}")
-        print(f"q_next: {q_next}")
-        print(f"q_next-q: {q_next-q}")
-        print(f"action: {action}")
         return action
 
     def init_stance(
@@ -127,8 +123,7 @@ class Runner():
             # Actuate Robot
             while time.time() - current_time < POLICY_STEP:
                 obs, lowstate = self.env.step(
-                    # init_action,
-                    obs[6:18] + self.env.policy_q_stand,
+                    init_action,
                     self.gait_mode,
                     zero_vel,
                     "direct",
