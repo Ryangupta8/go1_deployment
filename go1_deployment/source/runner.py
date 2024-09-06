@@ -145,7 +145,6 @@ class Runner():
                 init_action = np.zeros_like(self.action)
             # Actuate Robot
             while time.time() - current_time < POLICY_STEP and not self.env.is_stopped:
-                print(f"Action: {init_action}")
                 obs, lowstate = self.env.step(
                     init_action.copy(),
                     self.gait_mode,
@@ -185,6 +184,7 @@ class Runner():
 
     def run(self) -> list:
         print("=== Policy Running ===")
+        self.action = np.zeros_like(self.action)
         counter = 1
         time_pre_policy = time.time()
         time_post_policy = time.time()
@@ -206,7 +206,8 @@ class Runner():
                 obs, lowstate = self.env.step(
                     self.action,
                     self.gait_mode,
-                    self.vel_cmd
+                    self.vel_cmd,
+                    CONTROL_MODE,
                 )
 
             # Update Observation History
