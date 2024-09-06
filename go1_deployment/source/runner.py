@@ -6,7 +6,7 @@ import time
 from typing import Iterator, Literal
 
 from .constants import (
-    H, OBS_LEN, POLICY_STEP, INIT_STEPS,
+    H, OBS_LEN, POLICY_STEP,
     INTERP_MODE, INIT_CONTROL_MODE, CONTROL_MODE
 )
 from .control_loop import Go1Env
@@ -94,7 +94,7 @@ class Runner():
     ) -> np.ndarray:
         q = q_rel + q_ref
         delta_q = q_des - q
-        delta_step = step / max_steps
+        delta_step = min(step / max_steps, 1)
         if mode == "linear":
             q_next = q + (delta_q * delta_step)
         elif mode == "sine":
@@ -127,6 +127,7 @@ class Runner():
         init_q = obs[6:18]
         start_time = time.time()
         step = 0
+        max_steps = int(1 / POLICY_STEP) * duration
         while time.time() - start_time < duration and not self.env.is_stopped:
             current_time = time.time()
             if startup:
@@ -135,29 +136,32 @@ class Runner():
                     q_ref=self.env.policy_q_stand,
                     q_des=self.env.policy_q_stand,
                     step=step,
-                    max_steps=INIT_STEPS,
+                    max_steps=max_steps,
                     mode=INTERP_MODE,
                     control_mode=INIT_CONTROL_MODE,
                 )
+                step = min(step + 1, max_steps)
             else:
                 init_action = np.zeros_like(self.action)
-            step += 1
             # Actuate Robot
-            while time.time() - current_time < POLICY_STEP:
+            while time.time() - current_time < POLICY_STEP and not self.env.is_stopped:
+                print(f"Action: {init_action}")
                 obs, lowstate = self.env.step(
                     init_action,
                     self.gait_mode,
                     zero_vel,
                     INIT_CONTROL_MODE if startup else CONTROL_MODE,
                 )
-                # Write Logs
-                motors = lowstate.motorState[:12]
+            # Write Logs
+            motors = lowstate.motorState[:12]
             if INIT_CONTROL_MODE == "direct":
-                init_action -= self.env.policy_q_stand
+                init_action_log = init_action - self.env.policy_q_stand
+            else:
+                init_action_log = init_action
             self.logs.append({
                 # policy order
                 "time": current_time,
-                "action": init_action,
+                "action": init_action_log,
                 "q": obs[6:18],
                 "dq": obs[18:30],
                 "projected_gravity": obs[0:3],

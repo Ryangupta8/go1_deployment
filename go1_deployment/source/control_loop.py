@@ -2,7 +2,8 @@ import numpy as np
 from typing import Any, Literal
 
 from .constants import (
-    LOWLEVEL, KP, KD, KA, SAFE_LEVEL
+    LOWLEVEL, KP, KD, KA, SAFE_LEVEL,
+    POS_STOP_F, VEL_STOP_F
 )
 from .utils import (
     quat_rot_inv,
@@ -182,7 +183,9 @@ class Go1Env():
     def trigger_estop(self) -> None:
         self.estop = 1
         for motor_id in range(12):
+            self.lowcmd.motorCmd[motor_id].q = POS_STOP_F
             self.lowcmd.motorCmd[motor_id].Kp = 0
+            self.lowcmd.motorCmd[motor_id].dq = VEL_STOP_F
             self.lowcmd.motorCmd[motor_id].Kd = 0
             self.lowcmd.motorCmd[motor_id].tau = 0
         unsafe = self.safe.PowerProtect(
@@ -193,7 +196,8 @@ class Go1Env():
         if unsafe >= 0:
             self.udp.SetSend(self.lowcmd)
             self.udp.Send()
-        # raise SystemExit  # TODO remove
+        else:
+            raise SystemExit
 
     @property
     def is_stopped(self) -> int:
