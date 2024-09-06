@@ -147,7 +147,7 @@ class Runner():
             while time.time() - current_time < POLICY_STEP and not self.env.is_stopped:
                 print(f"Action: {init_action}")
                 obs, lowstate = self.env.step(
-                    init_action,
+                    init_action.copy(),
                     self.gait_mode,
                     zero_vel,
                     INIT_CONTROL_MODE if startup else CONTROL_MODE,
