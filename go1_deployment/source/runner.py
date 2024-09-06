@@ -79,7 +79,7 @@ class Runner():
         print("=== Begin Stance ===")
         self.init_stance(stance_duration, startup=True)
         print("=== Hold Stance ===")
-        # self.init_stance(stance_duration, startup=False)
+        self.init_stance(stance_duration, startup=False)
         print("=== Policy Start ===")
 
     def action_smoothing(
