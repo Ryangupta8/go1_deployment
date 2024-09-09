@@ -3,7 +3,8 @@ from typing import Any, Literal
 
 from .constants import (
     LOWLEVEL, robot_KP, robot_KD,
-    KA, SAFE_LEVEL, POS_STOP_F, VEL_STOP_F
+    KA, SAFE_LEVEL, POS_STOP_F, VEL_STOP_F,
+    robot_Q_STANCE
 )
 from .utils import (
     quat_rot_inv,
@@ -33,12 +34,7 @@ class Go1Env():
               policy_<var_name>
         """
         # Environment Data
-        self.robot_q_stand = np.array([
-            -0.1, 0.8, -1.5,
-            0.1, 0.8, -1.5,
-            -0.1, 1.0, -1.5,
-            0.1, 1.0, -1.5,
-        ])
+        self.robot_q_stand = robot_Q_STANCE
         self.policy_q_stand = robot_to_policy_joint_reorder(self.robot_q_stand)
         self.gravity = np.array([0, 0, -9.81])
         self.gravity /= np.linalg.norm(self.gravity)  # normalized

@@ -151,12 +151,14 @@ class Runner():
                     zero_vel,
                     INIT_CONTROL_MODE if startup else CONTROL_MODE,
                 )
+            print(f"Actions: {init_action}")
             # Write Logs
             motors = lowstate.motorState[:12]
             if INIT_CONTROL_MODE == "direct":
                 init_action_log = init_action - self.env.policy_q_stand
             else:
                 init_action_log = init_action
+            print(f"Actions Logged: {init_action_log}")
             self.logs.append({
                 # policy order
                 "time": current_time,

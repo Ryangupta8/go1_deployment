@@ -302,7 +302,7 @@ def read_pickled_data(
         data = pickle.load(file)
     c = 0
     c_min = 50 * 0  # 14
-    c_max = 50 * 5  # 16
+    c_max = 50 * 20  # 16
     for obs in data:
         c += 1
         if c < c_min:
