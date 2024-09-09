@@ -10,21 +10,21 @@ OBS_LEN = 46
 H = 5
 KP = 30
 robot_KP = np.array([
-    30, 30, 30,  # FR
-    30, 30, 30,  # FL
-    30, 30, 30,  # RR
-    30, 30, 30,  # RL
+    30, 40, 55,  # FR
+    30, 40, 55,  # FL
+    30, 50, 70,  # RR
+    30, 50, 70,  # RL
     ])
 KD = 0.5
 robot_KD = np.array([
-    0.5, 0.5, 0.5,  # FR
-    0.5, 0.5, 0.5,  # FL
-    0.5, 0.5, 0.5,  # RR
-    0.5, 0.5, 0.5,  # RL
+    0.5, 0.6, 0.75,  # FR
+    0.5, 0.6, 0.75,  # FL
+    0.5, 0.6, 0.75,  # RR
+    0.5, 0.6, 0.75,  # RL
     ])
 KA = 0.25
 INIT_STEPS = 100
 INTERP_MODE = "linear"
 INIT_CONTROL_MODE = "direct"
 CONTROL_MODE = "hybrid"
-SAFE_LEVEL = 1  # int from 1 (10%) to 9 (100%)
+SAFE_LEVEL = 4  # int from 1 (10%) to 9 (100%)
