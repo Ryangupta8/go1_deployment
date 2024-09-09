@@ -90,7 +90,7 @@ class Runner():
             step: int,
             max_steps: int,
             mode: Literal["linear", "sine"] = "linear",
-            control_mode: Literal["pd", "hybrid", "direct"] = "direct"
+            control_mode: Literal["pd", "hybrid", "direct", "debug"] = "direct"
     ) -> np.ndarray:
         q = q_rel + q_ref
         delta_q = q_des - q
@@ -102,6 +102,7 @@ class Runner():
         else:
             print(f"Error: action smoothing mode {mode} undefined")
             self.trigger_estop()
+            return np.zeros_like(q)
         if control_mode in ["pd", "hybrid"]:
             action = q_next - q_ref
         elif control_mode == "direct":
@@ -109,6 +110,7 @@ class Runner():
         else:
             print(f"Error: control mode {control_mode} undefined")
             self.trigger_estop()
+            return np.zeros_like(q)
         return action
 
     def init_stance(

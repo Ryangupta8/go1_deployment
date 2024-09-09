@@ -57,7 +57,7 @@ class Go1Env():
             policy_action: np.ndarray,
             gait_mode: np.ndarray,
             vel_cmd_override: np.ndarray = None,
-            control_mode: Literal["pd", "hybrid", "direct"] = "hybrid",
+            control_mode: Literal["pd", "hybrid", "direct", "debug"] = "hybrid",
     ) -> tuple[np.ndarray, Any]:
         self.send_commands(policy_action, mode=control_mode)
         policy_obs = self.get_obs(
@@ -74,7 +74,7 @@ class Go1Env():
             policy_action: np.ndarray,
             gait_mode: np.ndarray,
             vel_cmd_override: np.ndarray,
-            control_mode: Literal["pd", "hybrid", "direct"] = "hybrid",
+            control_mode: Literal["pd", "hybrid", "direct", "debug"] = "hybrid",
     ) -> np.ndarray:
         self.udp.Recv()
         self.udp.GetRecv(self.lowstate)
