@@ -18,12 +18,12 @@ from go1_deployment import DIR_PATH
 def vel_cmd_generator() -> Iterator[np.ndarray]:
     commands = [
         np.array([0, 0, 0], dtype=np.float32),  # stance
-        np.array([0.5, 0, 0], dtype=np.float32),  # forward
-        np.array([-0.5, 0, 0], dtype=np.float32),  # backward
-        np.array([0, 0.5, 0], dtype=np.float32),  # left
-        np.array([0, -0.5, 0], dtype=np.float32),  # right
-        np.array([0, 0, 0.5], dtype=np.float32),  # ccw
-        np.array([0, 0, -0.5], dtype=np.float32),  # cw
+        # np.array([0.5, 0, 0], dtype=np.float32),  # forward
+        # np.array([-0.5, 0, 0], dtype=np.float32),  # backward
+        # np.array([0, 0.5, 0], dtype=np.float32),  # left
+        # np.array([0, -0.5, 0], dtype=np.float32),  # right
+        # np.array([0, 0, 0.5], dtype=np.float32),  # ccw
+        # np.array([0, 0, -0.5], dtype=np.float32),  # cw
         np.array([0, 0, 0], dtype=np.float32),  # stance
     ]
     for command in commands:
