@@ -130,6 +130,7 @@ class Runner():
         start_time = time.time()
         step = 0
         max_steps = int(1 / POLICY_STEP) * duration
+        control_mode = INIT_CONTROL_MODE if startup else CONTROL_MODE
         while time.time() - start_time < duration and not self.env.is_stopped:
             current_time = time.time()
             if startup:
@@ -140,7 +141,7 @@ class Runner():
                     step=step,
                     max_steps=max_steps,
                     mode=INTERP_MODE,
-                    control_mode=INIT_CONTROL_MODE,
+                    control_mode=control_mode,
                 )
                 step = min(step + 1, max_steps)
             else:
@@ -151,12 +152,12 @@ class Runner():
                     init_action.copy(),
                     self.gait_mode,
                     zero_vel,
-                    INIT_CONTROL_MODE if startup else CONTROL_MODE,
+                    control_mode,
                 )
             print(f"Actions: {init_action}")
             # Write Logs
             motors = lowstate.motorState[:12]
-            if INIT_CONTROL_MODE == "direct":
+            if control_mode == "direct":
                 init_action_log = init_action - self.env.policy_q_stand
             else:
                 init_action_log = init_action
