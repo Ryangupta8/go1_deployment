@@ -103,7 +103,7 @@ class Runner():
             print(f"Error: action smoothing mode {mode} undefined")
             self.trigger_estop()
             return np.zeros_like(q)
-        if control_mode in ["pd", "hybrid"]:
+        if control_mode in ["pd", "hybrid", "debug"]:
             action = q_next - q_ref
         elif control_mode == "direct":
             action = q_next
