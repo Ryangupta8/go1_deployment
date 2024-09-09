@@ -119,12 +119,18 @@ class Go1Env():
             policy_action: np.ndarray,
             policy_q_rel: np.ndarray = None,
             policy_dq: np.ndarray = None,
-            mode: Literal["pd", "hybrid", "direct"] = "hybrid",
+            mode: Literal["pd", "hybrid", "direct", "debug"] = "hybrid",
     ) -> None:
         robot_action = policy_to_robot_joint_reorder(policy_action)
 
+        if mode == "debug":
+            for motor_id in range(12):
+                self.lowcmd.motorCmd[motor_id].Kp = 0
+                self.lowcmd.motorCmd[motor_id].Kd = 0
+                self.lowcmd.motorCmd[motor_id].tau = 0
+
         # Mode 1 - Joint PD Control:
-        if mode == "pd":
+        elif mode == "pd":
             for motor_id in range(12):
                 q_default = self.robot_q_stand[motor_id]
                 q_act = self.stance_trigger * self.ka * robot_action[motor_id]
