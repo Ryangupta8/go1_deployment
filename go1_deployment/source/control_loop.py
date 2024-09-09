@@ -2,8 +2,8 @@ import numpy as np
 from typing import Any, Literal
 
 from .constants import (
-    LOWLEVEL, KP, KD, KA, SAFE_LEVEL,
-    POS_STOP_F, VEL_STOP_F
+    LOWLEVEL, robot_KP, robot_KD,
+    KA, SAFE_LEVEL, POS_STOP_F, VEL_STOP_F
 )
 from .utils import (
     quat_rot_inv,
@@ -42,8 +42,8 @@ class Go1Env():
         self.policy_q_stand = robot_to_policy_joint_reorder(self.robot_q_stand)
         self.gravity = np.array([0, 0, -9.81])
         self.gravity /= np.linalg.norm(self.gravity)  # normalized
-        self.kp = KP
-        self.kd = KD
+        self.kp = robot_KP
+        self.kd = robot_KD
         self.ka = KA
         self.stance_trigger = 1
 
@@ -133,9 +133,9 @@ class Go1Env():
                 q_default = self.robot_q_stand[motor_id]
                 q_act = self.stance_trigger * self.ka * robot_action[motor_id]
                 self.lowcmd.motorCmd[motor_id].q = q_default + q_act
-                self.lowcmd.motorCmd[motor_id].Kp = self.kp
+                self.lowcmd.motorCmd[motor_id].Kp = self.kp[motor_id]
                 self.lowcmd.motorCmd[motor_id].dq = 0
-                self.lowcmd.motorCmd[motor_id].Kd = self.kd
+                self.lowcmd.motorCmd[motor_id].Kd = self.kd[motor_id]
                 self.lowcmd.motorCmd[motor_id].tau = 0
         # Mode 2 - Hybrid Control:
         elif mode == "hybrid":
@@ -143,17 +143,17 @@ class Go1Env():
                 q_default = self.robot_q_stand[motor_id]
                 q_act = self.stance_trigger * self.ka * robot_action[motor_id]
                 self.lowcmd.motorCmd[motor_id].q = q_default
-                self.lowcmd.motorCmd[motor_id].Kp = self.kp
+                self.lowcmd.motorCmd[motor_id].Kp = self.kp[motor_id]
                 self.lowcmd.motorCmd[motor_id].dq = 0
-                self.lowcmd.motorCmd[motor_id].Kd = self.kd
-                self.lowcmd.motorCmd[motor_id].tau = self.kp * q_act
+                self.lowcmd.motorCmd[motor_id].Kd = self.kd[motor_id]
+                self.lowcmd.motorCmd[motor_id].tau = self.kp[motor_id] * q_act
         # Mode 3 - Direct Position Control:
         elif mode == "direct":
             for motor_id in range(12):
                 self.lowcmd.motorCmd[motor_id].q = robot_action[motor_id]
-                self.lowcmd.motorCmd[motor_id].Kp = self.kp
+                self.lowcmd.motorCmd[motor_id].Kp = self.kp[motor_id]
                 self.lowcmd.motorCmd[motor_id].dq = 0
-                self.lowcmd.motorCmd[motor_id].Kd = self.kd
+                self.lowcmd.motorCmd[motor_id].Kd = self.kd[motor_id]
                 self.lowcmd.motorCmd[motor_id].tau = 0
         # Mode 4 - Direct Torque Control:
         # robot_q_rel = policy_to_robot_joint_reorder(policy_q_rel)

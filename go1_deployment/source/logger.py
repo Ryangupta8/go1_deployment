@@ -300,7 +300,15 @@ def read_pickled_data(
 ) -> None:
     with open(pickle_file, "rb") as file:
         data = pickle.load(file)
+    c = 0
+    c_min = 50 * 0  # 14
+    c_max = 50 * 5  # 16
     for obs in data:
+        c += 1
+        if c < c_min:
+            continue
+        if c > c_max:
+            break
         t = obs["time"]
         proj_g = obs["projected_gravity"].flatten().tolist()
         vel_cmd = obs["vel_cmd"].flatten().tolist()
