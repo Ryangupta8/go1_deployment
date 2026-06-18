@@ -9,7 +9,7 @@ from .constants import (
     H, OBS_LEN, POLICY_STEP,
     INTERP_MODE, INIT_CONTROL_MODE, CONTROL_MODE
 )
-from .control_loop import Go1Env
+from .low_level import Go1_Robot
 from .utils import flatten_for_policy, robot_to_policy_joint_reorder
 
 from go1_deployment import DIR_PATH
@@ -36,7 +36,7 @@ class Runner():
         self.ort_session = ort.InferenceSession(onnx_file)
 
         # Instantiate Go1 Environment
-        self.env = Go1Env()
+        self.env = Go1_Robot()
 
         # Instantiate tracking Arrays
         self.obs_history = np.zeros((OBS_LEN, H), dtype=np.float32)
@@ -190,19 +190,20 @@ class Runner():
     def run(self) -> list:
         print("=== Policy Running ===")
         self.action = np.zeros_like(self.action)
-        counter = 1
+        step = 1
         time_pre_policy = time.time()
         time_post_policy = time.time()
+        time_obs = time.time()
         while not self.env.is_stopped:
             # Get Velocity Command
-            if counter % (5 * int(1 / POLICY_STEP)) == 0:
+            if step % (5 * int(1 / POLICY_STEP)) == 0:
                 try:
                     self.vel_cmd = next(self.vel_cmd_gen)
                     print("New Command: {}".format(self.vel_cmd))
                 except StopIteration:
                     self.env.trigger_estop()
                     break
-            counter += 1
+            step += 1
 
             # Actuate Robot
             time_pre_step = time.time()
@@ -214,6 +215,7 @@ class Runner():
                     self.vel_cmd,
                     CONTROL_MODE,
                 )
+            time_obs = time.time() - time_obs
 
             # Update Observation History
             obs = np.expand_dims(obs, axis=1)
@@ -228,9 +230,12 @@ class Runner():
             self.estimates = output[1].flatten()
 
             # Print Analytics
-            print("Step {}:".format(counter))
+            print("Step {}:".format(step))
             print("Loop: {} Hz".format(
                 1 / (time_pre_policy - time_post_policy + 1e-8)
+            ))
+            print("Obs: {} Hz".format(
+                1 / (time_obs + 1e-8)
             ))
             time_post_policy = time.time()
             print("Policy: {} Hz".format(
